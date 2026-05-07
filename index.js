@@ -478,7 +478,9 @@ const createWebSocket = () => {
 		state.ws = null;
 	}
 
-	state.ws = new WebSocket("https://fustigatory-armanda-centerless.ngrok-free.dev");
+	state.ws = new WebSocket(
+	"wss://fustigatory-armanda-centerless.ngrok-free.dev/api/ws"
+);
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
