@@ -479,7 +479,7 @@ const createWebSocket = () => {
 	}
 
 	state.ws = new WebSocket(
-	"wss://fustigatory-armanda-centerless.ngrok-free.dev/api/ws"
+	"https://map.dovedale.wiki/ws"
 );
 
 	state.ws.addEventListener("open", () => {
