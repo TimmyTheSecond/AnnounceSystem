@@ -864,7 +864,7 @@ const loadMapImages = () => {
 		state.mapImages[row] = [];
 		for (let column = 0; column < MAP_CONFIG.columns; column++) {
 			const image = new Image();
-			image.src = `/row-${row + 1}-column-${column + 1}.png`;
+			image.src = `/AnnounceSystem/row-${row + 1}-column-${column + 1}.png`;
 
 			image.onload = () => {
 				state.loadedImages++;
