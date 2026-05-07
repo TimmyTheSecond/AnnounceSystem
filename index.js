@@ -478,10 +478,7 @@ const createWebSocket = () => {
 		state.ws = null;
 	}
 
-	state.ws = new WebSocket(
-		(location.protocol == "http:" ? "ws://" : "wss://") +
-		`${window.location.host}/api/ws`,
-	);
+	state.ws = new WebSocket("https://fustigatory-armanda-centerless.ngrok-free.dev");
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
