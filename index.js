@@ -478,20 +478,21 @@ const createWebSocket = () => {
         state.ws = null;
     }
 
-    // Use relative path like the official site
+    // Connect to the public Dovedale WebSocket
     state.ws = new WebSocket(
         (location.protocol == "http:" ? "ws://" : "wss://") +
-        `${window.location.host}/ws`     // Changed to /ws (or /api/ws if needed)
+        "map.dovedale.wiki/ws"
     );
 
-    // ... rest of the function stays the same
+    // Keep the rest of your event listeners (open, message, error, close) the same
+    state.ws.addEventListener("open", () => {
+        console.log("WebSocket connected");
+        state.reconnectAttempts = 0;
+        hideConnectionPopup();
+        // startStaleServerCleanup();  // if you have this
+    });
 
-	state.ws.addEventListener("open", () => {
-		console.log("WebSocket connected");
-		state.reconnectAttempts = 0;
-		hideConnectionPopup();
-		startStaleServerCleanup();
-	});
+    // ... keep your message, error, and close listeners
 
 	state.ws.addEventListener("message", (event) => {
 		try {
