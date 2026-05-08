@@ -1,6 +1,6 @@
 // =============================================
 // Dovedale Train Announcement System
-// Visual Radius Circles (0.5 transparency)
+// No Leaflet needed
 // =============================================
 
 console.log("📋 TrainSystem.js loaded");
@@ -24,44 +24,16 @@ class TrainDetectionSystem {
         this.stationZones = [];
         this.trainStates = new Map();
         this.DEBOUNCE_INTERVAL = 5 * 60 * 1000;
-        this.circleLayers = [];
     }
 
-    init(map) {
+    init() {
         this.stationZones = DEFAULT_STATIONS;
-        console.log(`✅ Train Detection System ready with ${this.stationZones.length} stations`);
+        console.log(`✅ Loaded ${DEFAULT_STATIONS.length} stations with 200 stud radius`);
         
-        if (map && typeof map.addLayer === 'function') {
-            this.drawStationCircles(map);
-        } else {
-            console.warn("⚠️ No valid map passed. Circles not drawn.");
-        }
-    }
-
-    drawStationCircles(map) {
-        // Clear previous circles
-        this.circleLayers.forEach(layer => map.removeLayer(layer));
-        this.circleLayers = [];
-
-        DEFAULT_STATIONS.forEach(station => {
-            const circle = L.circle([station.center.y, station.center.x], {
-                radius: station.radius,
-                color: "#ffff00",
-                weight: 2,
-                opacity: 0.9,
-                fillColor: "#ffff00",
-                fillOpacity: 0.5,        // 50% transparency
-            }).addTo(map);
-
-            circle.bindTooltip(station.name, {
-                permanent: false,
-                direction: "center"
-            });
-
-            this.circleLayers.push(circle);
+        console.log("🟡 Station Zones (radius = 200):");
+        DEFAULT_STATIONS.forEach(s => {
+            console.log(`   • ${s.name} → (${s.center.x}, ${s.center.y})`);
         });
-
-        console.log(`🟡 Drew ${DEFAULT_STATIONS.length} semi-transparent radius circles`);
     }
 
     calculateDistance(p1, p2) {
@@ -72,6 +44,7 @@ class TrainDetectionSystem {
 
     processTrains(players) {
         const trains = players.filter(p => p.trainData?.headcode);
+        
         for (const train of trains) {
             const headcode = train.trainData.headcode;
             const pos = train.position;
@@ -93,8 +66,7 @@ class TrainDetectionSystem {
                 if (!state.isInside && isInside) {
                     const now = Date.now();
                     if (now - state.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
-                        const announcement = `${headcode} is entering ${zone.name}`;
-                        console.log(`🚨 ${announcement}`);
+                        console.log(`🚨 ${headcode} is entering ${zone.name}`);
                         state.lastAnnouncement = now;
                     }
                 }
@@ -104,22 +76,19 @@ class TrainDetectionSystem {
     }
 }
 
-// Global instance
 const detectionSystem = new TrainDetectionSystem();
 let ws = null;
 
 export function startAnnouncementSystem() {
     if (ws) ws.close();
 
-    console.log("🚀 Starting Dovedale Announcement System...");
+    console.log("🚀 Starting Announcement System...");
 
     ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
 
     ws.onopen = () => {
         console.log("✅ WebSocket Connected");
-        // Try to use global map variable (common in your original code)
-        const map = window.map || window.state?.map;
-        detectionSystem.init(map);
+        detectionSystem.init();
     };
 
     ws.onmessage = (event) => {
@@ -138,15 +107,14 @@ export function startAnnouncementSystem() {
     };
 
     ws.onclose = () => {
-        console.log("⚠️ Disconnected. Reconnecting in 5s...");
+        console.log("⚠️ Disconnected. Reconnecting...");
         setTimeout(startAnnouncementSystem, 5000);
     };
-
-    ws.onerror = () => console.log("❌ WebSocket error");
 }
 
-// Make it available globally
 window.startAnnouncementSystem = startAnnouncementSystem;
 window.detectionSystem = detectionSystem;
 
-console.log("✅ TrainSystem.js ready! Type: startAnnouncementSystem()  in the console");
+console.log("✅ System ready!");
+console.log("Just type in console:");
+console.log("startAnnouncementSystem()");
