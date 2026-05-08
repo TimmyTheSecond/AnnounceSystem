@@ -325,7 +325,6 @@ export default {
 	detectTrainsFromPlayerData,
 	getDebugJSON,
 	getStatistics,
-	runDetectionDemo,
 	exportAnnouncementData,
 	isTrainRecentlyAnnounced,
 	getTrainsAtStation,
