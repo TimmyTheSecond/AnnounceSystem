@@ -1,67 +1,89 @@
 /**
- * Dovedale Live Announcement Integration
+ * Dovedale Live Announcement Integration - DEBUG VERSION
  */
-import { initializeStationZones, detectTrainsFromPlayerData } from "./integrationHelpers";
+import { initializeStationZones, detectTrainsFromPlayerData } from "./trainDetectionIntegration";
 
 let ws: WebSocket | null = null;
 
 export function startAnnouncementSystem() {
-    if (ws) ws.close();
+    console.log("🚀 startAnnouncementSystem() called");
+
+    if (ws) {
+        console.log("Closing existing connection...");
+        ws.close();
+    }
 
     const url = "wss://map.dovedale.wiki/api/ws";
-    console.log("🚂 Starting Dovedale Announcement System...");
+    console.log(`Attempting to connect to: ${url}`);
 
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-        console.log("✅ Connected to Dovedale map - Live announcements active");
+        console.log("✅ WebSocket CONNECTED successfully!");
     };
 
     ws.onmessage = (event) => {
+        console.log("📥 Raw message received:", event.data.substring(0, 300) + "..."); // first 300 chars
+
         try {
             const data = JSON.parse(event.data);
+            console.log("✅ Parsed data successfully");
+
             let players: any[] = [];
 
             if (Array.isArray(data)) {
                 players = data;
+                console.log(`Received array with ${players.length} players`);
             } else if (data && typeof data === "object") {
                 if (data.username && data.position) {
                     players = [data];
+                    console.log("Received single player update");
                 } else if (Array.isArray(data.players)) {
                     players = data.players;
+                    console.log(`Received data.players array with ${players.length} players`);
                 }
             }
 
-            if (players.length > 0) {
+            console.log(`Total players to process: ${players.length}`);
+
+            const trains = players.filter(p => p.trainData?.headcode);
+            console.log(`Trains detected: ${trains.length}`);
+
+            if (trains.length > 0) {
                 const announcements = detectTrainsFromPlayerData(players);
+                console.log(`Announcements generated: ${announcements.length}`);
 
                 if (announcements.length > 0) {
-                    console.log(`📢 ${announcements.length} announcement(s) triggered:`);
-                    announcements.forEach(ann => console.log(`   ${ann}`));
+                    console.log("🚨 ANNOUNCEMENTS:");
+                    announcements.forEach(ann => console.log(`   → ${ann}`));
                 }
+            } else {
+                console.log("No trains with headcodes right now.");
             }
+
         } catch (err) {
-            console.error("Failed to parse message:", err);
+            console.error("❌ Error parsing message:", err);
         }
     };
 
-    ws.onerror = (err) => console.error("WebSocket Error:", err);
+    ws.onerror = (err) => {
+        console.error("❌ WebSocket ERROR occurred", err);
+    };
 
-    ws.onclose = () => {
-        console.warn("⚠️ WebSocket closed. Reconnecting in 5s...");
-        setTimeout(startAnnouncementSystem, 5000);
+    ws.onclose = (event) => {
+        console.warn(`⚠️ WebSocket CLOSED (code: ${event.code})`);
+        setTimeout(() => {
+            console.log("Reconnecting...");
+            startAnnouncementSystem();
+        }, 5000);
     };
 }
 
-export function stopAnnouncementSystem() {
-    ws?.close();
-    ws = null;
-}
+// Auto start + big visible log
+console.log("📌 Announcement Integration script LOADED");
+initializeStationZones();
 
-// Auto-start when imported (optional)
-if (typeof window !== "undefined") {
-    initializeStationZones();
-    // startAnnouncementSystem();   // Uncomment if you want auto-start
-}
+// Uncomment this if you want it to start automatically
+startAnnouncementSystem();
 
-export { startAnnouncementSystem, stopAnnouncementSystem };
+export { startAnnouncementSystem };
