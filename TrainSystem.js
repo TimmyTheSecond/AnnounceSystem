@@ -73,7 +73,7 @@ class TrainDetectionSystem {
                     if (now - state.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
                         console.log(`${headcode} is entering ${zone.name}`);
 
-                        fetch("https://fustigatory-armanda-centerless.ngrok-free.dev", {
+                        fetch("http://127.0.0.1:3000", {
                             method: "POST",
                             headers: {
                             "Content-Type": "application/json"
