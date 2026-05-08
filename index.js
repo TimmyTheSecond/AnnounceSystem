@@ -468,19 +468,24 @@ const stopStaleServerCleanup = () => {
 };
 
 const createWebSocket = () => {
-	if (state.reconnectTimeout) {
-		clearTimeout(state.reconnectTimeout);
-		state.reconnectTimeout = null;
-	}
+    if (state.reconnectTimeout) {
+        clearTimeout(state.reconnectTimeout);
+        state.reconnectTimeout = null;
+    }
 
-	if (state.ws) {
-		state.ws.close();
-		state.ws = null;
-	}
+    if (state.ws) {
+        state.ws.close();
+        state.ws = null;
+    }
 
-	state.ws = new WebSocket(
-	"https://map.dovedale.wiki/ws"
-);
+    // Use relative path like the official site
+    state.ws = new WebSocket(
+        (location.protocol == "http:" ? "ws://" : "wss://") +
+        `${window.location.host}/ws`     // Changed to /ws (or /api/ws if needed)
+    );
+
+    // ... rest of the function stays the same
+};
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
