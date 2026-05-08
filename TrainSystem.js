@@ -72,6 +72,17 @@ class TrainDetectionSystem {
                     const now = Date.now();
                     if (now - state.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
                         console.log(`${headcode} is entering ${zone.name}`);
+
+                        fetch("https://fustigatory-armanda-centerless.ngrok-free.dev", {
+                            method: "POST",
+                            headers: {
+                            "Content-Type": "application/json"
+                                                            },
+                                body: JSON.stringify({
+                                        text: (`${headcode} is entering ${zone.name}`)
+                            })
+                            });
+                        
                         state.lastAnnouncement = now;
                     }
                 }
