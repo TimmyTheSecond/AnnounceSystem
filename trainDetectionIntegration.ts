@@ -234,63 +234,7 @@ export function getStatistics(): {
  * Run a demo of the detection system with mock data
  * Useful for testing configuration and understanding behavior
  */
-export function runDetectionDemo(): void {
-	console.log("\n🚂 Starting Train Detection System Demo...\n");
 
-	// Initialize
-	initializeStationZones();
-	console.log();
-
-	// Create mock trains - positioned near actual stations
-	const mockPlayers: Player[] = [
-		{
-			username: "Player1",
-			position: { x: 1231, y: 534 }, // At Dovedale East
-			trainData: {
-				destination: "Dovedale Central",
-				trainClass: "350",
-				headcode: "1A75",
-				trainType: "EMU",
-			},
-		},
-		{
-			username: "Player2",
-			position: { x: 3157, y: 805 }, // At Dovedale Central
-			trainData: {
-				destination: "Gleethrop End",
-				trainClass: "375",
-				headcode: "3E22",
-				trainType: "EMU",
-			},
-		},
-		{
-			username: "Player3",
-			position: { x: 9991, y: 5236 }, // At Codsall Castle
-			trainData: {
-				destination: "Masonfield",
-				trainClass: "158",
-				headcode: "2F10",
-				trainType: "DMU",
-			},
-		},
-		{
-			username: "Player4",
-			position: { x: 0, y: 0 }, // Away from all stations
-			trainData: {
-				destination: "Dovedale Central",
-				trainClass: "350",
-				headcode: "5K33",
-				trainType: "EMU",
-			},
-		},
-		{
-			username: "Player5",
-			position: { x: -4650, y: 5798 }, // At Mazewood
-		},
-	];
-
-	console.log("Processing mock trains...\n");
-	const announcements = detectTrainsFromPlayerData(mockPlayers);
 
 	if (announcements.length > 0) {
 		console.log(`✓ Announcements generated (${announcements.length}):`);
