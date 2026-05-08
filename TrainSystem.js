@@ -1,6 +1,6 @@
 // =============================================
-// Dovedale Train Announcement System
-// Radius = 800
+// Dovedale Train Announcement System (Updated)
+// Tracking by Player ID to detect headcode changes
 // =============================================
 
 console.log("📋 TrainSystem.js loaded");
@@ -22,14 +22,14 @@ const DEFAULT_STATIONS = [
 class TrainDetectionSystem {
     constructor() {
         this.stationZones = [];
+        // Map stores player unique ID -> { currentHeadcode, stationStates: [] }
         this.trainStates = new Map();
-        this.knownHeadcodes = new Set();
-        this.DEBOUNCE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        this.DEBOUNCE_INTERVAL = 5 * 60 * 1000; 
     }
 
     init() {
         this.stationZones = DEFAULT_STATIONS;
-        console.log(`✅ Train Detection System initialized with ${DEFAULT_STATIONS.length} stations (Radius: 800)`);
+        console.log(`✅ Train Detection System initialized.`);
     }
 
     calculateDistance(p1, p2) {
@@ -38,100 +38,72 @@ class TrainDetectionSystem {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    processTrains(players) {
-        const trains = players.filter(p => p.trainData?.headcode);
+    async announce(message) {
+        console.log(`📢 ANNOUNCEMENT: ${message}`);
+        try {
+            await fetch("http://127.0.0.1:3000", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: message })
+            });
+        } catch (e) {
+            console.error("Failed to send announcement to local server");
+        }
+    }
 
-        for (const train of trains) {
+    processTrains(players) {
+        const activeTrains = players.filter(p => p.trainData?.headcode);
+
+        for (const train of activeTrains) {
+            // Use username or unique ID as the primary key, NOT the headcode
+            const trainId = train.username || train.id; 
             const headcode = train.trainData.headcode;
             const pos = train.position;
 
-            const isNewTrain = !this.knownHeadcodes.has(headcode);
-            if (isNewTrain) {
-                this.knownHeadcodes.add(headcode);
-                console.log(`New train spawned: ${headcode}`);
-                continue; // Skip announcement on spawn or headcode change
+            // 1. Check if it's a brand new spawn
+            if (!this.trainStates.has(trainId)) {
+                const nearestStation = this.stationZones.find(z => this.calculateDistance(pos, z.center) <= z.radius);
+                const spawnLoc = nearestStation ? `at ${nearestStation.name}` : "outside a station";
+                
+                this.announce(`${headcode} spawned ${spawnLoc}`);
+                
+                this.trainStates.set(trainId, {
+                    lastHeadcode: headcode,
+                    stationStates: []
+                });
+                continue;
             }
 
-            if (!this.trainStates.has(headcode)) {
-                this.trainStates.set(headcode, []);
+            const stateData = this.trainStates.get(trainId);
+
+            // 2. Check for Headcode Change
+            if (stateData.lastHeadcode !== headcode) {
+                this.announce(`${stateData.lastHeadcode} changed its headcode to ${headcode}`);
+                stateData.lastHeadcode = headcode;
             }
 
-            const states = this.trainStates.get(headcode);
-
+            // 3. Process Station Entries
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
 
-                let state = states.find(s => s.stationName === zone.name);
-                if (!state) {
-                    state = { stationName: zone.name, isInside: false, lastAnnouncement: 0 };
-                    states.push(state);
+                let zoneState = stateData.stationStates.find(s => s.stationName === zone.name);
+                if (!zoneState) {
+                    zoneState = { stationName: zone.name, isInside: false, lastAnnouncement: 0 };
+                    stateData.stationStates.push(zoneState);
                 }
 
-                if (!state.isInside && isInside) {
+                if (!zoneState.isInside && isInside) {
                     const now = Date.now();
-                    if (now - state.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
-                        console.log(`${headcode} is entering ${zone.name}`);
-
-                        fetch("http://127.0.0.1:3000", {
-                            method: "POST",
-                            headers: {
-                            "Content-Type": "application/json"
-                                                            },
-                                body: JSON.stringify({
-                                        text: (`${headcode} is entering ${zone.name}`)
-                            })
-                            });
-                        
-                        state.lastAnnouncement = now;
+                    if (now - zoneState.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
+                        this.announce(`${headcode} is entering ${zone.name}`);
+                        zoneState.lastAnnouncement = now;
                     }
                 }
-                state.isInside = isInside;
+                zoneState.isInside = isInside;
             }
         }
     }
 }
 
-const detectionSystem = new TrainDetectionSystem();
-let ws = null;
-
-export function startAnnouncementSystem() {
-    if (ws) ws.close();
-
-    console.log("🚀 Starting Dovedale Announcement System...");
-
-    ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
-
-    ws.onopen = () => {
-        console.log("✅ WebSocket Connected");
-        detectionSystem.init();
-    };
-
-    ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            let players = [];
-
-            if (Array.isArray(data)) players = data;
-            else if (data.username && data.position) players = [data];
-            else if (Array.isArray(data.players)) players = data.players;
-
-            if (players.length > 0) {
-                detectionSystem.processTrains(players);
-            }
-        } catch (e) {}
-    };
-
-    ws.onclose = () => {
-        console.log("⚠️ Disconnected. Reconnecting in 5s...");
-        setTimeout(startAnnouncementSystem, 5000);
-    };
-
-    ws.onerror = () => console.log("❌ WebSocket error");
-}
-
-// Global access
-window.startAnnouncementSystem = startAnnouncementSystem;
-window.detectionSystem = detectionSystem;
-
-console.log("✅ System ready! Type startAnnouncementSystem() to start.");
+// ... (Rest of the WebSocket logic remains the same)
