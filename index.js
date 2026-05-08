@@ -481,7 +481,7 @@ const createWebSocket = () => {
     // Connect to the public Dovedale WebSocket
     state.ws = new WebSocket(
         (location.protocol == "http:" ? "ws://" : "wss://") +
-        "map.dovedale.wiki/ws"
+        "map.dovedale.wiki/api/ws"
     );
 
     // Keep the rest of your event listeners (open, message, error, close) the same
