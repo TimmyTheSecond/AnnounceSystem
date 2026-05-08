@@ -1,22 +1,22 @@
 // =============================================
 // Dovedale Train Announcement System
-// Auto-detects map + Visual Radius Circles
+// Visual Radius Circles (0.5 transparency)
 // =============================================
 
 console.log("📋 TrainSystem.js loaded");
 
 const DEFAULT_STATIONS = [
-    { name: "Gleethrop End", center: { x: 1274, y: 3563 }, radius: 750 },
-    { name: "Dovedale East", center: { x: 1231, y: 534 }, radius: 750 },
-    { name: "Fanory Mill", center: { x: -16821, y: -3954 }, radius: 750 },
-    { name: "Mazewood", center: { x: -4650, y: 5798 }, radius: 750 },
-    { name: "Codsall Castle", center: { x: 9991, y: 5236 }, radius: 750 },
-    { name: "Masonfield", center: { x: 10667, y: -881 }, radius: 750 },
-    { name: "Ashburn", center: { x: -22012, y: -6729 }, radius: 750 },
-    { name: "Cosdale Harbour", center: { x: 4325, y: -2518 }, radius: 750 },
-    { name: "Glassbury Junction", center: { x: 11592, y: 8663 }, radius: 750 },
-    { name: "Dovedale Central", center: { x: 3157, y: 805 }, radius: 750 },
-    { name: "Satus", center: { x: -7485, y: -3055 }, radius: 750 },
+    { name: "Gleethrop End", center: { x: 1274, y: 3563 }, radius: 200 },
+    { name: "Dovedale East", center: { x: 1231, y: 534 }, radius: 200 },
+    { name: "Fanory Mill", center: { x: -16821, y: -3954 }, radius: 200 },
+    { name: "Mazewood", center: { x: -4650, y: 5798 }, radius: 200 },
+    { name: "Codsall Castle", center: { x: 9991, y: 5236 }, radius: 200 },
+    { name: "Masonfield", center: { x: 10667, y: -881 }, radius: 200 },
+    { name: "Ashburn", center: { x: -22012, y: -6729 }, radius: 200 },
+    { name: "Cosdale Harbour", center: { x: 4325, y: -2518 }, radius: 200 },
+    { name: "Glassbury Junction", center: { x: 11592, y: 8663 }, radius: 200 },
+    { name: "Dovedale Central", center: { x: 3157, y: 805 }, radius: 200 },
+    { name: "Satus", center: { x: -7485, y: -3055 }, radius: 200 },
 ];
 
 class TrainDetectionSystem {
@@ -27,38 +27,20 @@ class TrainDetectionSystem {
         this.circleLayers = [];
     }
 
-    init() {
+    init(map) {
         this.stationZones = DEFAULT_STATIONS;
         console.log(`✅ Train Detection System ready with ${this.stationZones.length} stations`);
         
-        const map = this.findMap();
-        if (map) {
+        if (map && typeof map.addLayer === 'function') {
             this.drawStationCircles(map);
         } else {
-            console.warn("⚠️ Could not find Leaflet map automatically.");
+            console.warn("⚠️ No valid map passed. Circles not drawn.");
         }
-    }
-
-    findMap() {
-        // Try common global variable names
-        if (window.map) return window.map;
-        if (window.state?.map) return window.state.map;
-        if (window.L?.map) {
-            // Last resort: find any Leaflet map on the page
-            const maps = document.querySelectorAll('.leaflet-container');
-            if (maps.length > 0) {
-                console.log("Found Leaflet map container");
-                return window.map || window.state?.map;
-            }
-        }
-        return null;
     }
 
     drawStationCircles(map) {
-        // Remove old circles
-        this.circleLayers.forEach(layer => {
-            if (map.hasLayer(layer)) map.removeLayer(layer);
-        });
+        // Clear previous circles
+        this.circleLayers.forEach(layer => map.removeLayer(layer));
         this.circleLayers = [];
 
         DEFAULT_STATIONS.forEach(station => {
@@ -68,19 +50,18 @@ class TrainDetectionSystem {
                 weight: 2,
                 opacity: 0.9,
                 fillColor: "#ffff00",
-                fillOpacity: 0.5,           // 50% transparency
+                fillOpacity: 0.5,        // 50% transparency
             }).addTo(map);
 
-            circle.bindTooltip(station.name, { 
-                permanent: false, 
-                direction: "center",
-                className: "station-radius-label"
+            circle.bindTooltip(station.name, {
+                permanent: false,
+                direction: "center"
             });
 
             this.circleLayers.push(circle);
         });
 
-        console.log(`🟡 Drew ${DEFAULT_STATIONS.length} transparent radius circles`);
+        console.log(`🟡 Drew ${DEFAULT_STATIONS.length} semi-transparent radius circles`);
     }
 
     calculateDistance(p1, p2) {
@@ -131,12 +112,14 @@ export function startAnnouncementSystem() {
     if (ws) ws.close();
 
     console.log("🚀 Starting Dovedale Announcement System...");
-    
+
     ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
 
     ws.onopen = () => {
         console.log("✅ WebSocket Connected");
-        detectionSystem.init();           // Auto finds map + draws circles
+        // Try to use global map variable (common in your original code)
+        const map = window.map || window.state?.map;
+        detectionSystem.init(map);
     };
 
     ws.onmessage = (event) => {
@@ -155,15 +138,15 @@ export function startAnnouncementSystem() {
     };
 
     ws.onclose = () => {
-        console.log("⚠️ Disconnected - Reconnecting in 5s...");
+        console.log("⚠️ Disconnected. Reconnecting in 5s...");
         setTimeout(startAnnouncementSystem, 5000);
     };
 
     ws.onerror = () => console.log("❌ WebSocket error");
 }
 
-// Make available globally
+// Make it available globally
 window.startAnnouncementSystem = startAnnouncementSystem;
 window.detectionSystem = detectionSystem;
 
-console.log("✅ TrainSystem ready! Type **startAnnouncementSystem()** in console to start.");
+console.log("✅ TrainSystem.js ready! Type: startAnnouncementSystem()  in the console");
