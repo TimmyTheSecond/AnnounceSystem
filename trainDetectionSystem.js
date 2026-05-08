@@ -2,7 +2,7 @@
 // Dovedale Train Announcement System
 // Single File Version (Easy to use)
 // =============================================
-
+console.log("📋 debug");
 const DEFAULT_STATIONS = [
     { name: "Gleethrop End", center: { x: 1274, y: 3563 }, radius: 25 },
     { name: "Groenewoud", center: { x: -14658, y: -3762 }, radius: 25 },
