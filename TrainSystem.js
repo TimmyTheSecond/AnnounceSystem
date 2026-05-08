@@ -71,7 +71,7 @@ class TrainDetectionSystem {
                 if (!state.isInside && isInside) {
                     const now = Date.now();
                     if (now - state.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
-                        console.log(`🚨 ${headcode} is entering ${zone.name}`);
+                        console.log(`${headcode} is entering ${zone.name}`);
                         state.lastAnnouncement = now;
                     }
                 }
