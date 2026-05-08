@@ -485,7 +485,6 @@ const createWebSocket = () => {
     );
 
     // ... rest of the function stays the same
-};
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
