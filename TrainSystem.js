@@ -76,8 +76,7 @@ class TrainDetectionSystem {
                         fetch("https://fustigatory-armanda-centerless.ngrok-free.dev", {
                             method: "POST",
                             headers: {
-                            "Content-Type": "application/json",
-                            "ngrok-skip-browser-warning": "true"
+                            "Content-Type": "application/json"
                                                             },
                                 body: JSON.stringify({
                                         text: (`${headcode} is entering ${zone.name}`)
