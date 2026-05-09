@@ -949,137 +949,160 @@ const initializeMap = () => {
 };
 
 const handleMouseEvents = () => {
-	canvas.addEventListener("mousedown", (event) => {
-		const mousePosition = getCanvasCoordinates(event);
-		state.dragStart = context.transformedPoint(
-			mousePosition.x,
-			mousePosition.y,
-		);
-		state.isDragging = true;
-		return false;
-	});
+    canvas.addEventListener("mousedown", (event) => {
+        if (state.isFollowing) return;   // ← Block dragging when locked
 
-	canvas.addEventListener("mousemove", (event) => {
-		if (state.isDragging) {
-			if (state.hoveredPlayer) {
-				state.hoveredPlayer = null;
-				elements.tooltip.classList.add("hidden");
-			}
+        const mousePosition = getCanvasCoordinates(event);
+        state.dragStart = context.transformedPoint(
+            mousePosition.x,
+            mousePosition.y,
+        );
+        state.isDragging = true;
+        return false;
+    });
 
-			const mousePosition = getCanvasCoordinates(event);
-			const currentPoint = context.transformedPoint(
-				mousePosition.x,
-				mousePosition.y,
-			);
-			const distanceX = currentPoint.x - state.dragStart.x;
-			const distanceY = currentPoint.y - state.dragStart.y;
+    canvas.addEventListener("mousemove", (event) => {
+        if (state.isFollowing && !state.isDragging) {
+            // Still allow hover tooltip while locked? (optional)
+            const mousePosition = getCanvasCoordinates(event);
+            const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
+            if (player && player.username !== state.lockedPlayer) {
+                state.hoveredPlayer = player;
+                // updateTooltip(player); // you can enable if you want hover while locked
+            }
+            return;
+        }
 
-			context.translate(distanceX, distanceY);
-			drawScene();
-		} else {
-			const mousePosition = getCanvasCoordinates(event);
-			const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
+        if (state.isDragging) {
+            if (state.hoveredPlayer) {
+                state.hoveredPlayer = null;
+                elements.tooltip.classList.add("hidden");
+            }
+            const mousePosition = getCanvasCoordinates(event);
+            const currentPoint = context.transformedPoint(
+                mousePosition.x,
+                mousePosition.y,
+            );
+            const distanceX = currentPoint.x - state.dragStart.x;
+            const distanceY = currentPoint.y - state.dragStart.y;
+            context.translate(distanceX, distanceY);
+            drawScene();
+        } else {
+            const mousePosition = getCanvasCoordinates(event);
+            const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
+            if (player !== state.hoveredPlayer) {
+                state.hoveredPlayer = player;
+                updateTooltip(player);
+                drawScene();
+            }
+        }
+    });
 
-			if (player !== state.hoveredPlayer) {
-				state.hoveredPlayer = player;
-				updateTooltip(player, event.clientX, event.clientY);
-				drawScene();
-			}
-		}
-	});
+    canvas.addEventListener("mouseleave", () => {
+        state.isDragging = false;
+        state.dragStart = null;
+        if (state.hoveredPlayer && !state.isFollowing) {
+            state.hoveredPlayer = null;
+            elements.tooltip.classList.add("hidden");
+            drawScene();
+        }
+    });
 
-	canvas.addEventListener("mouseleave", () => {
-		state.isDragging = false;
-		state.dragStart = null;
+    canvas.addEventListener("mouseup", () => {
+        state.isDragging = false;
+        state.dragStart = null;
+    });
 
-		if (state.hoveredPlayer) {
-			state.hoveredPlayer = null;
-			elements.tooltip.classList.add("hidden");
-			drawScene();
-		}
-	});
-
-	canvas.addEventListener("mouseup", () => {
-		state.isDragging = false;
-		state.dragStart = null;
-	});
-
-	canvas.addEventListener(
-		"wheel",
-		(event) => {
-			event.preventDefault();
-			const zoomIntensity = 0.1;
-			const scale = event.deltaY < 0 ? 1 + zoomIntensity : 1 - zoomIntensity;
-			const mousePosition = getCanvasCoordinates(event);
-			zoomAt(mousePosition.x, mousePosition.y, scale);
-		},
-		{ passive: false },
-	);
+    // Wheel (zoom) remains fully enabled
+    canvas.addEventListener(
+        "wheel",
+        (event) => {
+            event.preventDefault();
+            const zoomIntensity = 0.1;
+            const scale = event.deltaY < 0 ? 1 + zoomIntensity : 1 - zoomIntensity;
+            const mousePosition = getCanvasCoordinates(event);
+            zoomAt(mousePosition.x, mousePosition.y, scale);
+        },
+        { passive: false },
+    );
 };
 
 const handleTouchEvents = () => {
-	canvas.addEventListener(
-		"touchstart",
-		(event) => {
-			state.hoveredPlayer = null;
-			elements.tooltip.classList.add("hidden");
+    canvas.addEventListener(
+        "touchstart",
+        (event) => {
+            if (state.isFollowing && event.touches.length === 1) {
+                // Allow pinch zoom but block single finger drag
+                if (event.touches.length === 2) {
+                    state.lastTouchDistance = getDistanceBetweenTouches(event.touches);
+                }
+                return;
+            }
 
-			if (event.touches.length === 1) {
-				const touchPosition = getCanvasCoordinates(event.touches[0]);
-				state.dragStart = context.transformedPoint(
-					touchPosition.x,
-					touchPosition.y,
-				);
-				state.isDragging = true;
-			} else if (event.touches.length === 2) {
-				state.lastTouchDistance = getDistanceBetweenTouches(event.touches);
-			}
-		},
-		{ passive: false },
-	);
+            state.hoveredPlayer = null;
+            elements.tooltip.classList.add("hidden");
 
-	canvas.addEventListener(
-		"touchmove",
-		(event) => {
-			event.preventDefault();
+            if (event.touches.length === 1) {
+                const touchPosition = getCanvasCoordinates(event.touches[0]);
+                state.dragStart = context.transformedPoint(
+                    touchPosition.x,
+                    touchPosition.y,
+                );
+                state.isDragging = true;
+            } else if (event.touches.length === 2) {
+                state.lastTouchDistance = getDistanceBetweenTouches(event.touches);
+            }
+        },
+        { passive: false },
+    );
 
-			state.hoveredPlayer = null;
-			elements.tooltip.classList.add("hidden");
+    canvas.addEventListener(
+        "touchmove",
+        (event) => {
+            event.preventDefault();
 
-			if (event.touches.length === 1 && state.isDragging) {
-				const touchPosition = getCanvasCoordinates(event.touches[0]);
-				const currentPoint = context.transformedPoint(
-					touchPosition.x,
-					touchPosition.y,
-				);
-				const distanceX = currentPoint.x - state.dragStart.x;
-				const distanceY = currentPoint.y - state.dragStart.y;
+            if (state.isFollowing) {
+                // Only allow pinch zoom, block drag
+                if (event.touches.length === 2) {
+                    const newDistance = getDistanceBetweenTouches(event.touches);
+                    const scale = newDistance / state.lastTouchDistance;
+                    const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+                    const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+                    zoomAt(centerX, centerY, scale);
+                    state.lastTouchDistance = newDistance;
+                }
+                return;
+            }
 
-				context.translate(distanceX, distanceY);
-				drawScene();
-			} else if (event.touches.length === 2) {
-				const newDistance = getDistanceBetweenTouches(event.touches);
-				const scale = newDistance / state.lastTouchDistance;
+            if (event.touches.length === 1 && state.isDragging) {
+                const touchPosition = getCanvasCoordinates(event.touches[0]);
+                const currentPoint = context.transformedPoint(
+                    touchPosition.x,
+                    touchPosition.y,
+                );
+                const distanceX = currentPoint.x - state.dragStart.x;
+                const distanceY = currentPoint.y - state.dragStart.y;
+                context.translate(distanceX, distanceY);
+                drawScene();
+            } else if (event.touches.length === 2) {
+                const newDistance = getDistanceBetweenTouches(event.touches);
+                const scale = newDistance / state.lastTouchDistance;
+                const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+                const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+                zoomAt(centerX, centerY, scale);
+                state.lastTouchDistance = newDistance;
+            }
+        },
+        { passive: false },
+    );
 
-				const centerX =
-					(event.touches[0].clientX + event.touches[1].clientX) / 2;
-				const centerY =
-					(event.touches[0].clientY + event.touches[1].clientY) / 2;
-
-				zoomAt(centerX, centerY, scale);
-				state.lastTouchDistance = newDistance;
-			}
-		},
-		{ passive: false },
-	);
-
-	canvas.addEventListener("touchend", (event) => {
-		if (event.touches.length < 2) state.lastTouchDistance = 0;
-		if (event.touches.length === 0) {
-			state.isDragging = false;
-			state.dragStart = null;
-		}
-	});
+    canvas.addEventListener("touchend", (event) => {
+        if (event.touches.length < 2) state.lastTouchDistance = 0;
+        if (event.touches.length === 0) {
+            state.isDragging = false;
+            state.dragStart = null;
+        }
+    });
 };
 
 elements.serverSelect.addEventListener("change", () => {
@@ -1149,18 +1172,43 @@ const showLockedTooltip = (player) => {
     const panel = document.getElementById('lockedPlayerPanel');
     if (!panel) return;
 
+    // Basic info
     panel.querySelector('#locked-name').textContent = player.username || "Unknown";
 
-    if (player.trainData && Array.isArray(player.trainData)) {
-        const [destination, trainClass, headcode] = player.trainData;
-        panel.querySelector('#locked-destination').textContent = destination || "—";
-        panel.querySelector('#locked-headcode').textContent = headcode || "—";
-        panel.querySelector('#locked-class').textContent = trainClass || "—";
+    const isTrain = !!(player.trainData && Array.isArray(player.trainData) && 
+                      player.trainData[2] && player.trainData[2] !== "----");
+
+    // Destination
+    const dest = player.trainData && Array.isArray(player.trainData) 
+                 ? (player.trainData[0] || "Unknown") 
+                 : "On Foot";
+    panel.querySelector('#locked-destination').textContent = dest;
+
+    // Train-specific fields
+    const headcodeEl = panel.querySelector('#locked-headcode');
+    const classEl = panel.querySelector('#locked-class');
+    const serverEl = panel.querySelector('#locked-server');
+
+    if (isTrain) {
+        const [, trainClass, headcode] = player.trainData;
+        headcodeEl.textContent = headcode || "—";
+        classEl.textContent = trainClass || "—";
+        headcodeEl.parentElement.style.display = 'block';
+        classEl.parentElement.style.display = 'block';
     } else {
-        panel.querySelector('#locked-destination').textContent = "On Foot";
-        panel.querySelector('#locked-headcode').textContent = "—";
-        panel.querySelector('#locked-class').textContent = "—";
+        headcodeEl.parentElement.style.display = 'none';
+        classEl.parentElement.style.display = 'none';
     }
+
+    // Server ID
+    let serverName = "Unknown";
+    for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
+        if (serverInfo.players && serverInfo.players.some(p => p.username === player.username)) {
+            serverName = jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
+            break;
+        }
+    }
+    if (serverEl) serverEl.textContent = serverName;
 
     panel.classList.remove('hidden');
 };
