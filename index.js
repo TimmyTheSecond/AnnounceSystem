@@ -218,11 +218,12 @@ const trackTransforms = () => {
 
 	const savedTransforms = [];
 	const original = {
-		save: context.save,
-		restore: context.restore,
-		scale: context.scale,
-		translate: context.translate,
-	};
+    save: context.save,
+    restore: context.restore,
+    scale: context.scale,
+    translate: context.translate,
+    setTransform: context.setTransform,
+};
 
 	context.save = function () {
 		savedTransforms.push(transform.translate(0, 0));
@@ -244,6 +245,17 @@ const trackTransforms = () => {
 		transform = transform.translate(distanceX, distanceY);
 		return original.translate.call(context, distanceX, distanceY);
 	};
+
+	context.setTransform = function(a, b, c, d, e, f) {
+    transform.a = a;
+    transform.b = b;
+    transform.c = c;
+    transform.d = d;
+    transform.e = e;
+    transform.f = f;
+
+    return original.setTransform.call(context, a, b, c, d, e, f);
+};
 
 	const point = svg.createSVGPoint();
 	context.transformedPoint = function (x, y) {
@@ -1068,33 +1080,44 @@ elements.reconnectBtn.addEventListener("click", () => {
 
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
-    const allPlayers = state.getAllPlayers();
 
-    const target = allPlayers.find(
+    const target = state.getAllPlayers().find(
         p => p.username?.toLowerCase() === username?.toLowerCase()
     );
 
     if (!target?.position) return;
 
-    // Reset transform PROPERLY
-    context.restore();
-    context.save();
-
-    state.currentScale = 1;
-
-    // Recalculate player canvas position AFTER reset
-    const pos = worldToCanvas(target.position.x, target.position.y);
-
     const zoomLevel = 5;
 
-    // Center camera on player
-    context.translate(canvas.width / 2, canvas.height / 2);
+    // HARD RESET EVERYTHING
+    context.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Reset tracked scale
+    state.currentScale = 1;
+
+    // Re-center map exactly like initializeMap()
+    const center = worldToCanvas(WORLD_CENTER.x, WORLD_CENTER.y);
+
+    context.translate(
+        window.innerWidth / 2 - center.x,
+        window.innerHeight / 2 - center.y
+    );
+
+    // NOW get player position
+    const playerPos = worldToCanvas(
+        target.position.x,
+        target.position.y
+    );
+
+    // Zoom toward player
+    context.translate(playerPos.x, playerPos.y);
+
     context.scale(zoomLevel, zoomLevel);
-    context.translate(-pos.x, -pos.y);
+
+    context.translate(-playerPos.x, -playerPos.y);
 
     state.currentScale = zoomLevel;
 
-    // Clear hover state
     state.hoveredPlayer = null;
     elements.tooltip.classList.add("hidden");
 
