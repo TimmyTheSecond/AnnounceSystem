@@ -1067,14 +1067,13 @@ elements.reconnectBtn.addEventListener("click", () => {
 });
 
 // ================== FIND PLAYER ON MAP - FINAL VERSION ==================
+// ================== NEW FIND PLAYER - DIFFERENT METHOD ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
 
-    const allPlayers = state.getAllPlayers ? state.getAllPlayers() : [];
-    const target = allPlayers.find(p => 
-        p.username && p.username.toLowerCase() === username.toLowerCase()
-    );
+    const allPlayers = state.getAllPlayers();
+    const target = allPlayers.find(p => p.username && p.username.toLowerCase() === username.toLowerCase());
 
     if (!target?.position) {
         console.log(`❌ Player "${username}" not found`);
@@ -1083,27 +1082,25 @@ window.addEventListener('findPlayer', (e) => {
 
     const { x, y } = target.position;
 
-    console.log(`🔍 Centering on ${username} at (${Math.round(x)}, ${Math.round(y)})`);
+    console.log(`🔍 Finding ${username} at (${Math.round(x)}, ${Math.round(y)})`);
 
-    // Full hard reset of transform
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    state.currentScale = 1;
+    // Different strategy: Use state target variables + highlight
+    state.targetX = x;
+    state.targetY = y;
+    
+    // Force camera to target
+    if (typeof state.cameraX !== 'undefined') state.cameraX = x;
+    if (typeof state.cameraY !== 'undefined') state.cameraY = y;
 
-    // Calculate where the player should be on screen
-    const targetCanvasPos = worldToCanvas(x, y);
+    // Strong zoom
+    state.currentScale = 4.0;
 
-    // Move the map so the player is roughly in the center
-    const offsetX = (canvas.width / 2) - targetCanvasPos.x;
-    const offsetY = (canvas.height / 2) - targetCanvasPos.y;
-
-    context.translate(offsetX, offsetY);
-
-    // Apply nice zoom
-    state.currentScale = 3.2;
+    // Highlight the player for 3 seconds
+    state.highlightedPlayer = username;
+    setTimeout(() => { state.highlightedPlayer = null; drawScene(); }, 3000);
 
     drawScene();
-
-    console.log(`✅ Successfully centered and zoomed on ${username}`);
+    console.log(`✅ Highlighted and zoomed toward ${username}`);
 });
 const start = () => {
 	trackTransforms();
