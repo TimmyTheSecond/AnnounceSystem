@@ -836,7 +836,7 @@ const drawScene = () => {
 			context.fill();
 
 			context.strokeStyle = isHovered ? "white" : "black";
-			context.lineWidth = Math.max((isHovered ? 0.8 : 0.5) * scaleFactor, 0.3);
+			context.lineWidth = Math.max((isHovered ? 1 : 0.7) * scaleFactor, 0.5);
 			context.stroke();
 		}
 	});
