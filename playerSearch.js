@@ -35,12 +35,21 @@ function initPlayerSearch() {
 
 function getServerNameForPlayer(player) {
     if (!player?.userId) return "Unknown Server";
-    const serverData = window.state?.serverData || {};
+
+    const serverData = window.state?.serverData;
+
+    if (!serverData) return "Loading...";
+
     for (const [jobId, data] of Object.entries(serverData)) {
-        if (data.players?.some(p => p.userId === player.userId)) {
-            return jobId.length > 10 ? `Server ${jobId.slice(-8)}` : `Server ${jobId}`;
+        if (!Array.isArray(data.players)) continue;
+
+        if (data.players.some(p => p.userId === player.userId)) {
+            return jobId.length > 10
+                ? `Server ${jobId.slice(-8)}`
+                : `Server ${jobId}`;
         }
     }
+
     return "Unknown Server";
 }
 
