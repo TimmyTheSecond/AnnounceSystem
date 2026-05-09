@@ -1187,46 +1187,59 @@ const showLockedTooltip = (player) => {
     const panel = document.getElementById('lockedPlayerPanel');
     if (!panel || !player) return;
 
+    const isTrain =
+        !!player.trainData &&
+        (
+            player.trainData.headcode ||
+            player.trainData.trainClass
+        );
+
     // Basic info
     const nameEl = panel.querySelector('#locked-name');
     if (nameEl) nameEl.textContent = player.username || "Unknown";
 
+    // Currently status (instead of destination confusion)
+    const statusEl = panel.querySelector('#locked-destination');
+    if (statusEl) {
+        statusEl.textContent = isTrain ? "Driving Train" : "On Foot";
+    }
+
+    // Train-only fields
     const headcodeEl = panel.querySelector('#locked-headcode');
     const classEl = panel.querySelector('#locked-class');
     const serverEl = panel.querySelector('#locked-server');
 
-    // === CURRENT STATUS (replaces destination meaning) ===
-    const statusEl = panel.querySelector('#locked-destination');
-    if (statusEl) {
-        const statusText = isTrain ? "Driving Train" : "On Foot";
-        statusEl.textContent = statusText;
+    if (isTrain) {
+        const headcode = player.trainData?.headcode || "—";
+        const trainClass = player.trainData?.trainClass || "—";
+
+        if (headcodeEl) {
+            headcodeEl.textContent = headcode;
+            headcodeEl.parentElement.style.display = 'block';
+        }
+
+        if (classEl) {
+            classEl.textContent = trainClass;
+            classEl.parentElement.style.display = 'block';
+        }
+    } else {
+        if (headcodeEl?.parentElement) headcodeEl.parentElement.style.display = 'none';
+        if (classEl?.parentElement) classEl.parentElement.style.display = 'none';
     }
 
-    // === TRAIN INFO ===
-    const isTrain =
-    !!player.trainData &&
-    (
-        (player.trainData.headcode && player.trainData.headcode !== "") ||
-        (player.trainData.trainClass && player.trainData.trainClass !== "")
-    );
-
-    // === SERVER INFO ===
+    // Server lookup
     let serverName = "Unknown";
 
     for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
         const players = serverInfo.players || [];
-
         if (players.some(p => p.username === player.username)) {
-            serverName = jobId.length > 6
-                ? jobId.slice(-6)
-                : jobId;
+            serverName = jobId.slice(-6);
             break;
         }
     }
 
     if (serverEl) serverEl.textContent = serverName;
 
-    // Show panel
     panel.classList.remove('hidden');
 };
 
