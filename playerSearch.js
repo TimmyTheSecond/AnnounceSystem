@@ -8,32 +8,48 @@ function initPlayerSearch() {
     const resultsContainer = document.getElementById('searchResults');
     const closeBtn = document.getElementById('closeSearch');
 
+    // Open panel
     searchBtn.addEventListener('click', () => {
         panel.classList.remove('hidden');
+        // Trigger fade in
+        setTimeout(() => {
+            panel.style.opacity = '1';
+        }, 10);
         input.focus();
-        input.select();
     });
 
-    closeBtn.addEventListener('click', () => {
-        panel.classList.add('hidden');
+    // Close panel
+    closeBtn.addEventListener('click', closePanel);
+    panel.addEventListener('click', (e) => {
+        if (e.target === panel) closePanel();
     });
 
-    // Close on escape
+    function closePanel() {
+        panel.style.opacity = '0';
+        setTimeout(() => {
+            panel.classList.add('hidden');
+        }, 300);
+    }
+
+    // Keyboard support
     document.addEventListener('keydown', e => {
         if (e.key === "Escape" && !panel.classList.contains('hidden')) {
-            panel.classList.add('hidden');
+            closePanel();
         }
     });
 
+    // Search input
     input.addEventListener('input', () => {
         const term = input.value.toLowerCase().trim();
         renderResults(term);
     });
 
-    // Listen for player data from index.js
+    // Listen for live player updates from your main script
     window.addEventListener('playersUpdated', (e) => {
         allPlayers = e.detail || [];
     });
+
+    console.log("✅ Player Search initialized");
 }
 
 function renderResults(term) {
@@ -41,34 +57,37 @@ function renderResults(term) {
     container.innerHTML = '';
 
     if (!term) {
-        container.innerHTML = `<p class="text-zinc-500 text-center py-8">Start typing a username...</p>`;
+        container.innerHTML = `<p class="text-zinc-500 text-center py-10">Start typing a username...</p>`;
         return;
     }
 
     const filtered = allPlayers.filter(p => 
-        p.username.toLowerCase().includes(term)
+        p.username && p.username.toLowerCase().includes(term)
     );
 
     if (filtered.length === 0) {
-        container.innerHTML = `<p class="text-zinc-500 text-center py-8">No players found</p>`;
+        container.innerHTML = `
+            <p class="text-zinc-500 text-center py-10">
+                No players found for "<span class="text-white">${term}</span>"
+            </p>`;
         return;
     }
 
     filtered.forEach(player => {
         const div = document.createElement('div');
-        div.className = "flex items-center justify-between p-4 hover:bg-zinc-800 rounded-2xl mb-2 group";
+        div.className = "flex items-center justify-between p-4 hover:bg-zinc-800 rounded-2xl mb-2 transition";
         div.innerHTML = `
-            <div>
-                <div class="font-medium">${player.username}</div>
+            <div class="flex-1">
+                <div class="font-medium text-lg">${player.username}</div>
                 <div class="text-sm text-zinc-400">${player.server || 'Unknown Server'}</div>
             </div>
             <div class="flex gap-2">
                 <button onclick="findPlayerOnMap('${player.username}')" 
-                    class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-xl text-sm transition">
+                    class="bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-sm transition">
                     Find on Map
                 </button>
                 <button onclick="openRobloxProfile('${player.userId}')" 
-                    class="bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded-xl text-sm transition">
+                    class="bg-zinc-700 hover:bg-zinc-600 px-5 py-2.5 rounded-xl text-sm transition">
                     Profile
                 </button>
             </div>
@@ -77,12 +96,16 @@ function renderResults(term) {
     });
 }
 
-// Global functions for inline onclick
+// Global functions
 window.findPlayerOnMap = function(username) {
-    // This will be connected to your map logic in index.js
-    console.log(`Finding ${username} on map...`);
-    window.dispatchEvent(new CustomEvent('findPlayer', { detail: username }));
-    document.getElementById('searchPanel').classList.add('hidden');
+    document.getElementById('searchPanel').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('searchPanel').classList.add('hidden');
+    }, 300);
+    
+    window.dispatchEvent(new CustomEvent('findPlayer', { 
+        detail: username 
+    }));
 };
 
 window.openRobloxProfile = function(userId) {
@@ -91,7 +114,7 @@ window.openRobloxProfile = function(userId) {
     }
 };
 
-// Auto initialize
+// Auto start
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPlayerSearch);
 } else {
