@@ -834,7 +834,7 @@ const drawScene = () => {
     
     		const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
     
-   		 const baseRadius = isHovered ? 2.2 : 1.8;           // smaller than before
+   		 const baseRadius = isHovered ? 2.4 : 2.0;           // smaller than before
     		const radius = baseRadius * dotScaleFactor;
 
    		 // Fill
@@ -845,7 +845,7 @@ const drawScene = () => {
     		// Outline
    		 	context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
     
-   			 const baseLineWidth = isHovered ? 1.6 : 1.25;       // thinner as requested
+   			 const baseLineWidth = isHovered ? 1.4 : 1.05;       // thinner as requested
    			 context.lineWidth = Math.max(baseLineWidth * dotScaleFactor, 0.55);
     
    			 context.lineJoin = "round";
