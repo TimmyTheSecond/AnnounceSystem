@@ -1195,11 +1195,6 @@ const showLockedTooltip = (player) => {
     const classEl = panel.querySelector('#locked-class');
     const serverEl = panel.querySelector('#locked-server');
 
-    const isTrain =
-        Array.isArray(player.trainData) &&
-        player.trainData[2] &&
-        player.trainData[2] !== "----";
-
     // === CURRENT STATUS (replaces destination meaning) ===
     const statusEl = panel.querySelector('#locked-destination');
     if (statusEl) {
