@@ -1068,39 +1068,43 @@ elements.reconnectBtn.addEventListener("click", () => {
 
 // ================== FIND PLAYER ON MAP ==================
 // ================== FIND PLAYER ON MAP ==================
+// ================== SAFE FIND PLAYER ON MAP ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
 
-    const allPlayers = state.getAllPlayers();
+    const allPlayers = state.getAllPlayers ? state.getAllPlayers() : [];
     const target = allPlayers.find(p => 
         p.username && p.username.toLowerCase() === username.toLowerCase()
     );
 
     if (!target?.position) {
-        console.log(`Player "${username}" not found`);
+        console.log(`❌ Player "${username}" not found`);
         return;
     }
 
     const { x, y } = target.position;
 
-    // Reset transform
+    console.log(`🔍 Centering on ${username} (${x.toFixed(0)}, ${y.toFixed(0)})`);
+
+    // Safer reset
     context.setTransform(1, 0, 0, 1, 0, 0);
-    state.currentScale = 1;
+    
+    state.currentScale = 2.8;  // Good zoom level
 
-    // Center camera on player
-    const canvasPos = worldToCanvas(x, y);
+    // Center the player
+    const canvasX = canvas.width / 2;
+    const canvasY = canvas.height / 2;
 
-    const offsetX = canvas.width / 2 - canvasPos.x;
-    const offsetY = canvas.height / 2 - canvasPos.y;
+    const worldPos = worldToCanvas ? worldToCanvas(x, y) : { x: x, y: y };
+
+    const offsetX = canvasX - worldPos.x;
+    const offsetY = canvasY - worldPos.y;
 
     context.translate(offsetX, offsetY);
-    state.currentScale = 2.8;   // Good zoom level
 
     drawScene();
-    console.log(`✅ Centered on ${username} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
 });
-
 const start = () => {
 	trackTransforms();
 	loadMapImages();
