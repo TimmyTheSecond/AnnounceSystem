@@ -218,11 +218,12 @@ const trackTransforms = () => {
 
 	const savedTransforms = [];
 	const original = {
-		save: context.save,
-		restore: context.restore,
-		scale: context.scale,
-		translate: context.translate,
-	};
+    save: context.save,
+    restore: context.restore,
+    scale: context.scale,
+    translate: context.translate,
+    setTransform: context.setTransform,
+};
 
 	context.save = function () {
 		savedTransforms.push(transform.translate(0, 0));
@@ -245,6 +246,17 @@ const trackTransforms = () => {
 		return original.translate.call(context, distanceX, distanceY);
 	};
 
+	context.setTransform = function(a, b, c, d, e, f) {
+    transform.a = a;
+    transform.b = b;
+    transform.c = c;
+    transform.d = d;
+    transform.e = e;
+    transform.f = f;
+
+    return original.setTransform.call(context, a, b, c, d, e, f);
+};
+
 	const point = svg.createSVGPoint();
 	context.transformedPoint = function (x, y) {
 		point.x = x;
@@ -259,7 +271,6 @@ const zoomAt = (screenX, screenY, scaleFactor) => {
 	context.scale(scaleFactor, scaleFactor);
 	context.translate(-point.x, -point.y);
 
-	state.currentScale *= scaleFactor;
 	drawScene();
 };
 
@@ -468,48 +479,59 @@ const stopStaleServerCleanup = () => {
 };
 
 const createWebSocket = () => {
-	if (state.reconnectTimeout) {
-		clearTimeout(state.reconnectTimeout);
-		state.reconnectTimeout = null;
-	}
+    if (state.reconnectTimeout) {
+        clearTimeout(state.reconnectTimeout);
+        state.reconnectTimeout = null;
+    }
 
-	if (state.ws) {
-		state.ws.close();
-		state.ws = null;
-	}
+    if (state.ws) {
+        state.ws.close();
+        state.ws = null;
+    }
 
-	state.ws = new WebSocket(
-		(location.protocol == "http:" ? "ws://" : "wss://") +
-		`${window.location.host}/api/ws`,
-	);
+    // Connect to the public Dovedale WebSocket
+    state.ws = new WebSocket(
+        (location.protocol == "http:" ? "ws://" : "wss://") +
+        "map.dovedale.wiki/api/ws"
+    );
 
-	state.ws.addEventListener("open", () => {
-		console.log("WebSocket connected");
-		state.reconnectAttempts = 0;
-		hideConnectionPopup();
-		startStaleServerCleanup();
-	});
+    // Keep the rest of your event listeners (open, message, error, close) the same
+    state.ws.addEventListener("open", () => {
+        console.log("WebSocket connected");
+        state.reconnectAttempts = 0;
+        hideConnectionPopup();
+        // startStaleServerCleanup();  // if you have this
+    });
+
+    // ... keep your message, error, and close listeners
 
 	state.ws.addEventListener("message", (event) => {
-		try {
-			const data = JSON.parse(event.data);
-			const jobId = data.jobId;
-			const playersArray = Array.isArray(data.players) ? data.players : [];
+    try {
+        const data = JSON.parse(event.data);
+        const jobId = data.jobId;
+        const playersArray = Array.isArray(data.players) ? data.players : [];
 
-			if (playersArray.length === 0 && data.serverShutdown) {
-				delete state.serverData[jobId];
-			} else {
-				state.serverData[jobId] = {
-					players: playersArray,
-					lastUpdate: Date.now(),
-				};
-			}
-			updateServerList(data);
-			drawScene();
-		} catch (err) {
-			console.error("Error parsing data", err);
-		}
-	});
+        if (playersArray.length === 0 && data.serverShutdown) {
+            delete state.serverData[jobId];
+        } else {
+            state.serverData[jobId] = {
+                players: playersArray,
+                lastUpdate: Date.now(),
+            };
+        }
+
+        updateServerList(data);
+        drawScene();
+
+        // ←←← ADD THIS LINE RIGHT HERE
+        window.dispatchEvent(new CustomEvent('playersUpdated', { 
+            detail: state.getAllPlayers() 
+        }));
+
+    } catch (err) {
+        console.error("Error parsing data", err);
+    }
+});
 
 	state.ws.addEventListener("error", (err) => {
 		console.warn("WebSocket error:", err);
@@ -814,7 +836,7 @@ const drawScene = () => {
 			context.fill();
 
 			context.strokeStyle = isHovered ? "white" : "black";
-			context.lineWidth = Math.max((isHovered ? 0.7 : 0.4) * scaleFactor, 0.25);
+			context.lineWidth = Math.max((isHovered ? 0.8 : 0.5) * scaleFactor, 0.3);
 			context.stroke();
 		}
 	});
@@ -864,7 +886,7 @@ const loadMapImages = () => {
 		state.mapImages[row] = [];
 		for (let column = 0; column < MAP_CONFIG.columns; column++) {
 			const image = new Image();
-			image.src = `/images/row-${row + 1}-column-${column + 1}.png`;
+			image.src = `/AnnounceSystem/row-${row + 1}-column-${column + 1}.png`;
 
 			image.onload = () => {
 				state.loadedImages++;
@@ -1055,8 +1077,45 @@ elements.reconnectBtn.addEventListener("click", () => {
 	attemptReconnect();
 });
 
+window.addEventListener('findPlayer', (e) => {
+    const username = e.detail;
+
+    const target = state.getAllPlayers().find(
+        p => p.username?.toLowerCase() === username?.toLowerCase()
+    );
+
+    if (!target?.position) return;
+
+    const zoomLevel = 5;
+
+    // hard reset
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    state.currentScale = 1;
+
+    // where is player on base map?
+    const pos = worldToCanvas(
+        target.position.x,
+        target.position.y
+    );
+
+    // move player to screen centre
+    context.translate(
+        canvas.width / 2 - pos.x,
+        canvas.height / 2 - pos.y
+    );
+
+    // now zoom around screen centre
+    zoomAt(canvas.width / 2, canvas.height / 2, zoomLevel);
+
+    state.hoveredPlayer = null;
+    elements.tooltip.classList.add("hidden");
+
+    drawScene();
+});
+
 const start = () => {
 	trackTransforms();
+	context.save();
 	loadMapImages();
 	handleMouseEvents();
 	handleTouchEvents();
