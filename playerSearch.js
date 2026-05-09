@@ -38,7 +38,9 @@ function getServerNameForPlayer(player) {
 
     const serverData = window.state?.serverData;
 
-    if (!serverData) return "Loading...";
+    if (!serverData || Object.keys(serverData).length === 0) {
+        return "Unknown Server";
+    }
 
     for (const [jobId, data] of Object.entries(serverData)) {
         if (!Array.isArray(data.players)) continue;
