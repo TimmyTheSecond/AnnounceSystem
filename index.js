@@ -834,7 +834,7 @@ const drawScene = () => {
     
     		const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
     
-   		 const baseRadius = isHovered ? 2.4 : 2.0;           // smaller than before
+   		 const baseRadius = isHovered ? 2.2 : 1.8;           // smaller than before
     		const radius = baseRadius * dotScaleFactor;
 
    		 // Fill
