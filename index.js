@@ -1066,6 +1066,37 @@ elements.reconnectBtn.addEventListener("click", () => {
 	attemptReconnect();
 });
 
+// ================== FIND PLAYER ON MAP ==================
+window.addEventListener('findPlayer', (e) => {
+    const username = e.detail;
+    if (!username) return;
+
+    const allPlayers = state.getAllPlayers ? state.getAllPlayers() : [];
+    const target = allPlayers.find(p => 
+        p.username && p.username.toLowerCase() === username.toLowerCase()
+    );
+
+    if (!target?.position) {
+        console.log(`❌ Player "${username}" not found on map`);
+        return;
+    }
+
+    const { x, y } = target.position;
+
+    console.log(`🔍 Centering map on ${username} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+
+    // Adjust these values based on your camera system
+    state.targetX = x;
+    state.targetY = y;
+    
+    // Try common camera variables
+    if (typeof state.cameraX !== 'undefined') state.cameraX = x;
+    if (typeof state.cameraY !== 'undefined') state.cameraY = y;
+
+    // Force redraw
+    drawScene();
+});
+
 const start = () => {
 	trackTransforms();
 	loadMapImages();
