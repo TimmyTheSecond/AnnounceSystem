@@ -131,6 +131,8 @@ class AppState {
 		this.totalImages = MAP_CONFIG.rows * MAP_CONFIG.columns;
 		this.staleCheckInterval = null;
 		this.previousPlayerPosition = {};
+		this.lockedPlayer = null;        // username of the player we're tracking
+		this.isFollowing = false;
 	}
 
 	getAllPlayers() {
@@ -522,6 +524,20 @@ const createWebSocket = () => {
 
         updateServerList(data);
         drawScene();
+
+		        // Auto-follow locked player
+        if (state.isFollowing && state.lockedPlayer) {
+            const currentPlayer = state.getAllPlayers().find(p => 
+                p.username === state.lockedPlayer
+            );
+
+            if (currentPlayer?.position) {
+                lockOntoPlayer(currentPlayer, state.currentScale);
+                showLockedTooltip(currentPlayer);
+            } else {
+                hideLockedTooltip();
+            }
+        }
 
         // ←←← ADD THIS LINE RIGHT HERE
         window.dispatchEvent(new CustomEvent('playersUpdated', { 
@@ -1090,31 +1106,24 @@ elements.reconnectBtn.addEventListener("click", () => {
 });
 
 window.addEventListener('findPlayer', (e) => {
-    const username = e.detail;
+    const username = e.detail?.trim();
+    if (!username) return;
 
     const target = state.getAllPlayers().find(
-        p => p.username?.toLowerCase() === username?.toLowerCase()
+        p => p.username?.toLowerCase() === username.toLowerCase()
     );
 
-    if (!target?.position) return;
+    if (!target?.position) {
+        console.warn(`Player "${username}" not found`);
+        return;
+    }
 
-    const zoomLevel = 5;
+    state.lockedPlayer = target.username;
+    state.isFollowing = true;
 
-    // hard reset
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    state.currentScale = 1;
-
-    // where is player on base map?
-    const pos = worldToCanvas(
-        target.position.x,
-        target.position.y
-    );
-
-    // move player to screen centre
-    context.translate(
-        canvas.width / 2 - pos.x,
-        canvas.height / 2 - pos.y
-    );
+    lockOntoPlayer(target, 6); // 6 = recommended zoom level
+    showLockedTooltip(target);
+});
 
     // now zoom around screen centre
     zoomAt(canvas.width / 2, canvas.height / 2, zoomLevel);
@@ -1123,6 +1132,60 @@ window.addEventListener('findPlayer', (e) => {
     elements.tooltip.classList.add("hidden");
 
     drawScene();
+});
+
+const lockOntoPlayer = (player, zoomLevel = 6) => {
+    if (!player?.position) return;
+
+    // === YOUR EXACT CAMERA METHOD ===
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    state.currentScale = 1;
+
+    const pos = worldToCanvas(
+        player.position.x,
+        player.position.y
+    );
+
+    context.translate(
+        canvas.width / 2 - pos.x,
+        canvas.height / 2 - pos.y
+    );
+
+    zoomAt(canvas.width / 2, canvas.height / 2, zoomLevel);
+};
+
+const showLockedTooltip = (player) => {
+    const panel = document.getElementById('lockedPlayerPanel');
+    if (!panel) return;
+
+    panel.querySelector('#locked-name').textContent = player.username || "Unknown";
+
+    if (player.trainData && Array.isArray(player.trainData)) {
+        const [destination, trainClass, headcode] = player.trainData;
+        panel.querySelector('#locked-destination').textContent = destination || "—";
+        panel.querySelector('#locked-headcode').textContent = headcode || "—";
+        panel.querySelector('#locked-class').textContent = trainClass || "—";
+    } else {
+        panel.querySelector('#locked-destination').textContent = "On Foot";
+        panel.querySelector('#locked-headcode').textContent = "—";
+        panel.querySelector('#locked-class').textContent = "—";
+    }
+
+    panel.classList.remove('hidden');
+};
+
+const hideLockedTooltip = () => {
+    const panel = document.getElementById('lockedPlayerPanel');
+    if (panel) panel.classList.add('hidden');
+    state.lockedPlayer = null;
+    state.isFollowing = false;
+};
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape" && state.isFollowing) {
+        hideLockedTooltip();
+        drawScene();
+    }
 });
 
 const start = () => {
