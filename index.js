@@ -1070,6 +1070,7 @@ elements.reconnectBtn.addEventListener("click", () => {
 // ================== NEW FIND PLAYER - DIFFERENT METHOD ==================
 // ================== FIND PLAYER ON MAP - FIXED ==================
 // ================== FIND PLAYER ON MAP - FIXED ==================
+// ================== FIND PLAYER ON MAP - FINAL FIX ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
@@ -1082,34 +1083,36 @@ window.addEventListener('findPlayer', (e) => {
         return;
     }
 
-    // 1. Calculate the base canvas coordinates for the player
     const pos = worldToCanvas(target.position.x, target.position.y);
 
-    // 2. RESET THE MATRIX COMPLETELY
-    // We use setTransform(1,0,0,1,0,0) to clear the native canvas matrix
+    // 1. COMPLETELY RESET THE TRACKED MATRIX
+    // We don't just use setTransform; we call context.setTransform(1,0,0,1,0,0)
+    // and then manually reset our state tracker.
     context.setTransform(1, 0, 0, 1, 0, 0);
     
-    // 3. RE-INITIALIZE TRACKED TRANSFORMS
-    // This is the "Secret Sauce": we need to re-run trackTransforms 
-    // or manually reset state.currentScale to 1 so the drag math stays 1:1
+    // Reset our internal scale tracker back to 1
     state.currentScale = 1;
 
-    // 4. PERFORM THE CAMERA ALIGNMENT
-    // Move center of screen to (0,0)
+    // 2. APPLY TRANSFORMATIONS THROUGH THE OVERRIDDEN METHODS
+    // This ensures that 'trackTransforms' records the new position
+    // and prevents the "hall of mirrors" glitch when zooming out.
+    
+    // Center the screen
     context.translate(canvas.width / 2, canvas.height / 2);
     
-    // Zoom in (e.g., 5x zoom)
+    // Zoom in (Set to 5 for a good view)
     const zoomLevel = 5;
     context.scale(zoomLevel, zoomLevel);
-    // state.currentScale is updated automatically by your context.scale override
     
-    // Move the player's position to the center
+    // Move to player
     context.translate(-pos.x, -pos.y);
 
-    // 5. Final render
-    drawScene();
+    // 3. CLEANUP
+    // Remove hovered player to ensure no outlines or tooltips appear
+    state.hoveredPlayer = null; 
     
-    console.log(`✅ Camera locked to ${username}`);
+    drawScene();
+    console.log(`✅ Camera synced and centered on ${username}`);
 });
 
 const start = () => {
