@@ -1185,56 +1185,65 @@ const lockOntoPlayer = (player, zoomLevel = 6) => {
 
 const showLockedTooltip = (player) => {
     const panel = document.getElementById('lockedPlayerPanel');
-    if (!panel) return;
+    if (!panel || !player) return;
 
     // Basic info
-    panel.querySelector('#locked-name').textContent = player.username || "Unknown";
+    const nameEl = panel.querySelector('#locked-name');
+    if (nameEl) nameEl.textContent = player.username || "Unknown";
 
-    const isTrain =
-  Array.isArray(player.trainData) &&
-  player.trainData[2] &&
-  player.trainData[2] !== "----";
-
-    // Destination
-    const dest = player.trainData && Array.isArray(player.trainData) 
-                 ? (player.trainData[0] || "Unknown") 
-                 : "On Foot";
-    panel.querySelector('#locked-destination').textContent = dest;
-
-    // Train-specific fields
     const headcodeEl = panel.querySelector('#locked-headcode');
     const classEl = panel.querySelector('#locked-class');
     const serverEl = panel.querySelector('#locked-server');
 
-	if (isTrain) {
-        const [, trainClass, headcode] = player.trainData;
-        headcodeEl.textContent = headcode || "—";
-        classEl.textContent = trainClass || "—";
-        headcodeEl.parentElement.style.display = 'block';
-        classEl.parentElement.style.display = 'block';
-    } else {
-        headcodeEl.parentElement.style.display = 'none';
-        classEl.parentElement.style.display = 'none';
+    const isTrain =
+        Array.isArray(player.trainData) &&
+        player.trainData[2] &&
+        player.trainData[2] !== "----";
+
+    // === CURRENT STATUS (replaces destination meaning) ===
+    const statusEl = panel.querySelector('#locked-destination');
+    if (statusEl) {
+        const statusText = isTrain ? "Driving Train" : "On Foot";
+        statusEl.textContent = statusText;
     }
 
-    // Server ID
+    // === TRAIN INFO ===
+    if (isTrain) {
+        const [, trainClass, headcode] = player.trainData;
+
+        if (headcodeEl) {
+            headcodeEl.textContent = headcode || "—";
+            headcodeEl.parentElement.style.display = 'block';
+        }
+
+        if (classEl) {
+            classEl.textContent = trainClass || "—";
+            classEl.parentElement.style.display = 'block';
+        }
+
+    } else {
+        if (headcodeEl?.parentElement) headcodeEl.parentElement.style.display = 'none';
+        if (classEl?.parentElement) classEl.parentElement.style.display = 'none';
+    }
+
+    // === SERVER INFO ===
     let serverName = "Unknown";
+
     for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
-        if (serverInfo.players && serverInfo.players.some(p => p.username === player.username)) {
-            serverName = jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
+        const players = serverInfo.players || [];
+
+        if (players.some(p => p.username === player.username)) {
+            serverName = jobId.length > 6
+                ? jobId.slice(-6)
+                : jobId;
             break;
         }
     }
+
     if (serverEl) serverEl.textContent = serverName;
 
+    // Show panel
     panel.classList.remove('hidden');
-};
-
-const hideLockedTooltip = () => {
-    const panel = document.getElementById('lockedPlayerPanel');
-    if (panel) panel.classList.add('hidden');
-    state.lockedPlayer = null;
-    state.isFollowing = false;
 };
 
 document.addEventListener('keydown', (e) => {
