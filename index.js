@@ -1070,11 +1070,12 @@ elements.reconnectBtn.addEventListener("click", () => {
 // ================== FIND PLAYER ON MAP ==================
 // ================== SAFE FIND PLAYER ON MAP ==================
 // ================== FIND PLAYER ON MAP (Safe Version) ==================
+// ================== FIND PLAYER ON MAP - ROBUST VERSION ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
 
-    const allPlayers = state.getAllPlayers();
+    const allPlayers = state.getAllPlayers ? state.getAllPlayers() : [];
     const target = allPlayers.find(p => 
         p.username && p.username.toLowerCase() === username.toLowerCase()
     );
@@ -1086,24 +1087,32 @@ window.addEventListener('findPlayer', (e) => {
 
     const { x, y } = target.position;
 
-    // Reset everything safely
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    state.currentScale = 1;
+    console.log(`🔍 Centering on ${username} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
 
-    // Center on player with good zoom
-    const centerCanvasX = canvas.width / 2;
-    const centerCanvasY = canvas.height / 2;
+    // === STRONG RESET ===
+    context.save();                    // Save current state (optional)
+    context.setTransform(1, 0, 0, 1, 0, 0);  // Full reset
+    
+    // Center the player
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
     const canvasPos = worldToCanvas(x, y);
 
-    const offsetX = centerCanvasX - canvasPos.x;
-    const offsetY = centerCanvasY - canvasPos.y;
+    const offsetX = centerX - canvasPos.x;
+    const offsetY = centerY - canvasPos.y;
 
     context.translate(offsetX, offsetY);
-    state.currentScale = 2.8;     // Nice zoom level
+    
+    // Apply good zoom level
+    state.currentScale = 3.0;     // Increased zoom
+
+    // Make sure state knows about the new position
+    if (state.targetX !== undefined) state.targetX = x;
+    if (state.targetY !== undefined) state.targetY = y;
 
     drawScene();
-    console.log(`✅ Centered on ${username}`);
+    console.log(`✅ Successfully centered and zoomed on ${username}`);
 });
 const start = () => {
 	trackTransforms();
