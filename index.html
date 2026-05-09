@@ -156,25 +156,38 @@
     </div>
 </div>
 
-<div id="lockedPlayerPanel" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 rounded-3xl p-6 text-white z-50 shadow-2xl">
-    <div class="flex justify-between mb-3">
-        <div class="text-emerald-400 text-xs tracking-widest">TRACKING PLAYER</div>
-        <button onclick="hideLockedTooltip()" class="text-2xl text-zinc-400 hover:text-white">×</button>
+<div id="lockedPlayerPanel" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 rounded-3xl shadow-2xl p-6 text-white z-50 min-w-[420px]">
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <div class="text-emerald-400 text-xs tracking-widest">TRACKING PLAYER</div>
+            <div id="locked-name" class="text-3xl font-bold"></div>
+        </div>
+        <button onclick="hideLockedTooltip()" class="text-zinc-400 hover:text-white text-3xl leading-none">×</button>
     </div>
-    <div id="locked-name" class="text-3xl font-bold mb-4"></div>
     
-    <div class="grid grid-cols-3 gap-4 text-sm">
+    <div class="grid grid-cols-2 gap-x-8 gap-y-5 text-sm">
+        <!-- Destination -->
         <div>
             <div class="text-zinc-400">Destination</div>
-            <div id="locked-destination" class="font-medium"></div>
+            <div id="locked-destination" class="font-semibold text-base"></div>
         </div>
+
+        <!-- Server -->
+        <div>
+            <div class="text-zinc-400">Server</div>
+            <div id="locked-server" class="font-semibold text-base"></div>
+        </div>
+
+        <!-- Headcode (hidden for non-trains) -->
         <div>
             <div class="text-zinc-400">Headcode</div>
-            <div id="locked-headcode" class="font-medium"></div>
+            <div id="locked-headcode" class="font-semibold text-base"></div>
         </div>
+
+        <!-- Train Class (hidden for non-trains) -->
         <div>
             <div class="text-zinc-400">Class</div>
-            <div id="locked-class" class="font-medium"></div>
+            <div id="locked-class" class="font-semibold text-base"></div>
         </div>
     </div>
 </div>
