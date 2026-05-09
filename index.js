@@ -495,25 +495,32 @@ const createWebSocket = () => {
     // ... keep your message, error, and close listeners
 
 	state.ws.addEventListener("message", (event) => {
-		try {
-			const data = JSON.parse(event.data);
-			const jobId = data.jobId;
-			const playersArray = Array.isArray(data.players) ? data.players : [];
+    try {
+        const data = JSON.parse(event.data);
+        const jobId = data.jobId;
+        const playersArray = Array.isArray(data.players) ? data.players : [];
 
-			if (playersArray.length === 0 && data.serverShutdown) {
-				delete state.serverData[jobId];
-			} else {
-				state.serverData[jobId] = {
-					players: playersArray,
-					lastUpdate: Date.now(),
-				};
-			}
-			updateServerList(data);
-			drawScene();
-		} catch (err) {
-			console.error("Error parsing data", err);
-		}
-	});
+        if (playersArray.length === 0 && data.serverShutdown) {
+            delete state.serverData[jobId];
+        } else {
+            state.serverData[jobId] = {
+                players: playersArray,
+                lastUpdate: Date.now(),
+            };
+        }
+
+        updateServerList(data);
+        drawScene();
+
+        // ←←← ADD THIS LINE RIGHT HERE
+        window.dispatchEvent(new CustomEvent('playersUpdated', { 
+            detail: state.getAllPlayers() 
+        }));
+
+    } catch (err) {
+        console.error("Error parsing data", err);
+    }
+});
 
 	state.ws.addEventListener("error", (err) => {
 		console.warn("WebSocket error:", err);
