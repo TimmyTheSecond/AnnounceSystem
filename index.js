@@ -1088,36 +1088,24 @@ window.addEventListener('findPlayer', (e) => {
 
     const zoomLevel = 5;
 
-    // FULL RESET
+    // hard reset
     context.setTransform(1, 0, 0, 1, 0, 0);
     state.currentScale = 1;
 
-    // Rebuild default centered map
-    const center = worldToCanvas(WORLD_CENTER.x, WORLD_CENTER.y);
-
-    context.translate(
-        canvas.width / 2 - center.x,
-        canvas.height / 2 - center.y
-    );
-
-    // Get player position AFTER reset
-    const playerPos = worldToCanvas(
+    // where is player on base map?
+    const pos = worldToCanvas(
         target.position.x,
         target.position.y
     );
 
-    // Center player on screen
+    // move player to screen centre
     context.translate(
-        canvas.width / 2 - playerPos.x,
-        canvas.height / 2 - playerPos.y
+        canvas.width / 2 - pos.x,
+        canvas.height / 2 - pos.y
     );
 
-    // Zoom around screen center
-    context.translate(canvas.width / 2, canvas.height / 2);
-    context.scale(zoomLevel, zoomLevel);
-    context.translate(-canvas.width / 2, -canvas.height / 2);
-
-    state.currentScale = zoomLevel;
+    // now zoom around screen centre
+    zoomAt(canvas.width / 2, canvas.height / 2, zoomLevel);
 
     state.hoveredPlayer = null;
     elements.tooltip.classList.add("hidden");
