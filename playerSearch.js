@@ -1,4 +1,4 @@
-// playerSearch.js
+// playerSearch.js - Clean & Reliable
 let allPlayers = [];
 
 function initPlayerSearch() {
@@ -26,9 +26,7 @@ function initPlayerSearch() {
         if (e.key === "Escape") closePanel();
     });
 
-    input.addEventListener('input', () => {
-        renderResults(input.value.toLowerCase().trim());
-    });
+    input.addEventListener('input', () => renderResults(input.value.toLowerCase().trim()));
 
     window.addEventListener('playersUpdated', (e) => {
         allPlayers = e.detail || [];
@@ -37,10 +35,9 @@ function initPlayerSearch() {
 
 function getServerNameForPlayer(player) {
     if (!player?.userId) return "Unknown Server";
-
     const serverData = window.state?.serverData || {};
     for (const [jobId, data] of Object.entries(serverData)) {
-        if (data.players && data.players.some(p => p.userId === player.userId)) {
+        if (data.players?.some(p => p.userId === player.userId)) {
             return jobId.length > 10 ? `Server ${jobId.slice(-8)}` : `Server ${jobId}`;
         }
     }
@@ -103,7 +100,7 @@ window.findPlayerOnMap = function(username) {
     const panel = document.getElementById('searchPanel');
     panel.style.opacity = '0';
     setTimeout(() => panel.classList.add('hidden'), 300);
-    
+
     window.dispatchEvent(new CustomEvent('findPlayer', { detail: username }));
 };
 
