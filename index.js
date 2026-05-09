@@ -830,27 +830,26 @@ const drawScene = () => {
 			state.previousPlayerPosition[player.userId] = { position: player.position, angle: markerAngle };
 		}
 		else { // not a train
-    context.fillStyle = getPlayerColor(name);
+    		context.fillStyle = getPlayerColor(name);
     
-    const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
-    const baseRadius = isHovered ? 2.8 : 2.2;
-    const radius = baseRadius * dotScaleFactor;
+    		const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
+    
+   		 const baseRadius = isHovered ? 2.4 : 2.0;           // smaller than before
+    		const radius = baseRadius * dotScaleFactor;
 
-    // Draw filled circle
-    context.beginPath();
-    context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
-    context.fill();
+   		 // Fill
+    		context.beginPath();
+    		context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
+    		context.fill();
 
-    // Draw outline
-    context.strokeStyle = isHovered ? "#ffffff" : "#111111";
+    		// Outline
+   		 	context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
     
-    const baseLineWidth = isHovered ? 2.0 : 1.4;
-    context.lineWidth = Math.max(baseLineWidth * dotScaleFactor, 0.6);
+   			 const baseLineWidth = isHovered ? 1.6 : 1.25;       // thinner as requested
+   			 context.lineWidth = Math.max(baseLineWidth * dotScaleFactor, 0.55);
     
-    context.lineJoin = "round";
-    context.lineCap = "round";
-    
-    context.stroke();
+   			 context.lineJoin = "round";
+    		 context.stroke();
 }
 	});
 
