@@ -1125,15 +1125,6 @@ window.addEventListener('findPlayer', (e) => {
     showLockedTooltip(target);
 });
 
-    // now zoom around screen centre
-    zoomAt(canvas.width / 2, canvas.height / 2, zoomLevel);
-
-    state.hoveredPlayer = null;
-    elements.tooltip.classList.add("hidden");
-
-    drawScene();
-});
-
 const lockOntoPlayer = (player, zoomLevel = 6) => {
     if (!player?.position) return;
 
