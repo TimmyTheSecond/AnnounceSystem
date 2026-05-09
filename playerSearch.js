@@ -1,4 +1,4 @@
-// playerSearch.js
+// playerSearch.js - Priority Search (Exact → Starts With → Contains)
 let allPlayers = [];
 
 function initPlayerSearch() {
@@ -8,48 +8,44 @@ function initPlayerSearch() {
     const resultsContainer = document.getElementById('searchResults');
     const closeBtn = document.getElementById('closeSearch');
 
-    // Open panel
     searchBtn.addEventListener('click', () => {
         panel.classList.remove('hidden');
-        // Trigger fade in
-        setTimeout(() => {
-            panel.style.opacity = '1';
-        }, 10);
+        setTimeout(() => panel.style.opacity = '1', 10);
         input.focus();
-    });
-
-    // Close panel
-    closeBtn.addEventListener('click', closePanel);
-    panel.addEventListener('click', (e) => {
-        if (e.target === panel) closePanel();
     });
 
     function closePanel() {
         panel.style.opacity = '0';
-        setTimeout(() => {
-            panel.classList.add('hidden');
-        }, 300);
+        setTimeout(() => panel.classList.add('hidden'), 300);
     }
 
-    // Keyboard support
+    closeBtn.addEventListener('click', closePanel);
+    panel.addEventListener('click', e => {
+        if (e.target === panel) closePanel();
+    });
+
     document.addEventListener('keydown', e => {
-        if (e.key === "Escape" && !panel.classList.contains('hidden')) {
-            closePanel();
-        }
+        if (e.key === "Escape") closePanel();
     });
 
-    // Search input
     input.addEventListener('input', () => {
-        const term = input.value.toLowerCase().trim();
-        renderResults(term);
+        renderResults(input.value.toLowerCase().trim());
     });
 
-    // Listen for live player updates from your main script
     window.addEventListener('playersUpdated', (e) => {
         allPlayers = e.detail || [];
     });
+}
 
-    console.log("✅ Player Search initialized");
+function getServerNameForPlayer(player) {
+    if (!player) return "Unknown Server";
+    
+    for (const [jobId, serverInfo] of Object.entries(window.state?.serverData || {})) {
+        if (serverInfo.players?.some(p => p.userId === player.userId)) {
+            return jobId.length > 8 ? `Server ${jobId.slice(-6)}` : `Server ${jobId}`;
+        }
+    }
+    return "Unknown Server";
 }
 
 function renderResults(term) {
@@ -61,25 +57,42 @@ function renderResults(term) {
         return;
     }
 
-    const filtered = allPlayers.filter(p => 
-        p.username && p.username.toLowerCase().includes(term)
-    );
+    const lowerTerm = term.toLowerCase();
+
+    const filtered = allPlayers
+        .filter(p => p.username && p.username.toLowerCase().includes(lowerTerm))
+        .sort((a, b) => {
+            const nameA = a.username.toLowerCase();
+            const nameB = b.username.toLowerCase();
+
+            // 1. Exact match gets highest priority
+            if (nameA === lowerTerm) return -1;
+            if (nameB === lowerTerm) return 1;
+
+            // 2. Starts with the search term
+            const startsA = nameA.startsWith(lowerTerm);
+            const startsB = nameB.startsWith(lowerTerm);
+            if (startsA && !startsB) return -1;
+            if (!startsA && startsB) return 1;
+
+            // 3. Contains (but doesn't start with) - alphabetical
+            return nameA.localeCompare(nameB);
+        });
 
     if (filtered.length === 0) {
-        container.innerHTML = `
-            <p class="text-zinc-500 text-center py-10">
-                No players found for "<span class="text-white">${term}</span>"
-            </p>`;
+        container.innerHTML = `<p class="text-zinc-500 text-center py-10">No players found for "<span class="text-white">${term}</span>"</p>`;
         return;
     }
 
     filtered.forEach(player => {
+        const serverName = getServerNameForPlayer(player);
+
         const div = document.createElement('div');
         div.className = "flex items-center justify-between p-4 hover:bg-zinc-800 rounded-2xl mb-2 transition";
         div.innerHTML = `
             <div class="flex-1">
                 <div class="font-medium text-lg">${player.username}</div>
-                <div class="text-sm text-zinc-400">${player.server || 'Unknown Server'}</div>
+                <div class="text-sm text-zinc-400">${serverName}</div>
             </div>
             <div class="flex gap-2">
                 <button onclick="findPlayerOnMap('${player.username}')" 
@@ -98,23 +111,18 @@ function renderResults(term) {
 
 // Global functions
 window.findPlayerOnMap = function(username) {
-    document.getElementById('searchPanel').style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById('searchPanel').classList.add('hidden');
-    }, 300);
+    const panel = document.getElementById('searchPanel');
+    panel.style.opacity = '0';
+    setTimeout(() => panel.classList.add('hidden'), 300);
     
-    window.dispatchEvent(new CustomEvent('findPlayer', { 
-        detail: username 
-    }));
+    window.dispatchEvent(new CustomEvent('findPlayer', { detail: username }));
 };
 
 window.openRobloxProfile = function(userId) {
-    if (userId) {
-        window.open(`https://www.roblox.com/users/${userId}/profile`, '_blank');
-    }
+    if (userId) window.open(`https://www.roblox.com/users/${userId}/profile`, '_blank');
 };
 
-// Auto start
+// Initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPlayerSearch);
 } else {
