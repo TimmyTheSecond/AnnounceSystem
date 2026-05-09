@@ -1069,35 +1069,41 @@ elements.reconnectBtn.addEventListener("click", () => {
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     const allPlayers = state.getAllPlayers();
-    const target = allPlayers.find(p => p.username?.toLowerCase() === username?.toLowerCase());
+
+    const target = allPlayers.find(
+        p => p.username?.toLowerCase() === username?.toLowerCase()
+    );
 
     if (!target?.position) return;
 
-    const pos = worldToCanvas(target.position.x, target.position.y);
+    // Reset transform PROPERLY
+    context.restore();
+    context.save();
 
-    // 1. Reset everything to zero
-    // We use the overridden methods so the 'transform' tracker follows along
-    context.setTransform(1, 0, 0, 1, 0, 0); 
     state.currentScale = 1;
 
-    // 2. Move to center of screen first
-    context.translate(canvas.width / 2, canvas.height / 2);
-    
-    // 3. Zoom in
+    // Recalculate player canvas position AFTER reset
+    const pos = worldToCanvas(target.position.x, target.position.y);
+
     const zoomLevel = 5;
+
+    // Center camera on player
+    context.translate(canvas.width / 2, canvas.height / 2);
     context.scale(zoomLevel, zoomLevel);
-    
-    // 4. Move to player
     context.translate(-pos.x, -pos.y);
 
-    // 5. Explicitly clear hover state to fix the outline bug
-    state.hoveredPlayer = null; 
+    state.currentScale = zoomLevel;
+
+    // Clear hover state
+    state.hoveredPlayer = null;
+    elements.tooltip.classList.add("hidden");
 
     drawScene();
 });
 
 const start = () => {
 	trackTransforms();
+	context.save();
 	loadMapImages();
 	handleMouseEvents();
 	handleTouchEvents();
