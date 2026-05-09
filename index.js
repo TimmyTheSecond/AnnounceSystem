@@ -1208,23 +1208,12 @@ const showLockedTooltip = (player) => {
     }
 
     // === TRAIN INFO ===
-    if (isTrain) {
-        const [, trainClass, headcode] = player.trainData;
-
-        if (headcodeEl) {
-            headcodeEl.textContent = headcode || "—";
-            headcodeEl.parentElement.style.display = 'block';
-        }
-
-        if (classEl) {
-            classEl.textContent = trainClass || "—";
-            classEl.parentElement.style.display = 'block';
-        }
-
-    } else {
-        if (headcodeEl?.parentElement) headcodeEl.parentElement.style.display = 'none';
-        if (classEl?.parentElement) classEl.parentElement.style.display = 'none';
-    }
+    const isTrain =
+    !!player.trainData &&
+    (
+        (player.trainData.headcode && player.trainData.headcode !== "") ||
+        (player.trainData.trainClass && player.trainData.trainClass !== "")
+    );
 
     // === SERVER INFO ===
     let serverName = "Unknown";
@@ -1244,6 +1233,19 @@ const showLockedTooltip = (player) => {
 
     // Show panel
     panel.classList.remove('hidden');
+};
+
+const hideLockedTooltip = () => {
+    const panel = document.getElementById('lockedPlayerPanel');
+    if (panel) panel.classList.add('hidden');
+
+    state.lockedPlayer = null;
+    state.isFollowing = false;
+
+    // optional but IMPORTANT: reset camera behavior
+    state.currentScale = Math.max(state.currentScale, 1);
+
+    drawScene();
 };
 
 document.addEventListener('keydown', (e) => {
