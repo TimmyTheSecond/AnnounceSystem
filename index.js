@@ -830,15 +830,28 @@ const drawScene = () => {
 			state.previousPlayerPosition[player.userId] = { position: player.position, angle: markerAngle };
 		}
 		else { // not a train
-			context.fillStyle = getPlayerColor(name);
-			context.beginPath();
-			context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
-			context.fill();
+    context.fillStyle = getPlayerColor(name);
+    
+    const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
+    const baseRadius = isHovered ? 2.8 : 2.2;
+    const radius = baseRadius * dotScaleFactor;
 
-			context.strokeStyle = isHovered ? "white" : "black";
-			context.lineWidth = Math.max((isHovered ? 0.8 : 0.5) * scaleFactor, 0.3);
-			context.stroke();
-		}
+    // Draw filled circle
+    context.beginPath();
+    context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
+    context.fill();
+
+    // Draw outline
+    context.strokeStyle = isHovered ? "#ffffff" : "#111111";
+    
+    const baseLineWidth = isHovered ? 2.0 : 1.4;
+    context.lineWidth = Math.max(baseLineWidth * dotScaleFactor, 0.6);
+    
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    
+    context.stroke();
+}
 	});
 
 	Object.keys(state.previousPlayerPosition).forEach((previousPlayerId) => {
