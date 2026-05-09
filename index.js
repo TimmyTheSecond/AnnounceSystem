@@ -1069,11 +1069,12 @@ elements.reconnectBtn.addEventListener("click", () => {
 // ================== FIND PLAYER ON MAP ==================
 // ================== FIND PLAYER ON MAP ==================
 // ================== SAFE FIND PLAYER ON MAP ==================
+// ================== FIND PLAYER ON MAP (Safe Version) ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
 
-    const allPlayers = state.getAllPlayers ? state.getAllPlayers() : [];
+    const allPlayers = state.getAllPlayers();
     const target = allPlayers.find(p => 
         p.username && p.username.toLowerCase() === username.toLowerCase()
     );
@@ -1085,25 +1086,24 @@ window.addEventListener('findPlayer', (e) => {
 
     const { x, y } = target.position;
 
-    console.log(`🔍 Centering on ${username} (${x.toFixed(0)}, ${y.toFixed(0)})`);
-
-    // Safer reset
+    // Reset everything safely
     context.setTransform(1, 0, 0, 1, 0, 0);
-    
-    state.currentScale = 2.8;  // Good zoom level
+    state.currentScale = 1;
 
-    // Center the player
-    const canvasX = canvas.width / 2;
-    const canvasY = canvas.height / 2;
+    // Center on player with good zoom
+    const centerCanvasX = canvas.width / 2;
+    const centerCanvasY = canvas.height / 2;
 
-    const worldPos = worldToCanvas ? worldToCanvas(x, y) : { x: x, y: y };
+    const canvasPos = worldToCanvas(x, y);
 
-    const offsetX = canvasX - worldPos.x;
-    const offsetY = canvasY - worldPos.y;
+    const offsetX = centerCanvasX - canvasPos.x;
+    const offsetY = centerCanvasY - canvasPos.y;
 
     context.translate(offsetX, offsetY);
+    state.currentScale = 2.8;     // Nice zoom level
 
     drawScene();
+    console.log(`✅ Centered on ${username}`);
 });
 const start = () => {
 	trackTransforms();
