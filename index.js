@@ -1069,6 +1069,7 @@ elements.reconnectBtn.addEventListener("click", () => {
 // ================== FIND PLAYER ON MAP - FINAL VERSION ==================
 // ================== NEW FIND PLAYER - DIFFERENT METHOD ==================
 // ================== FIND PLAYER ON MAP - FIXED ==================
+// ================== FIND PLAYER ON MAP - FIXED ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
@@ -1081,36 +1082,34 @@ window.addEventListener('findPlayer', (e) => {
         return;
     }
 
-    // 1. Get the player's coordinates in the "base" canvas space (before zooming/panning)
+    // 1. Calculate the base canvas coordinates for the player
     const pos = worldToCanvas(target.position.x, target.position.y);
 
-    // 2. Reset the transformation matrix to default (Identity Matrix)
+    // 2. RESET THE MATRIX COMPLETELY
+    // We use setTransform(1,0,0,1,0,0) to clear the native canvas matrix
     context.setTransform(1, 0, 0, 1, 0, 0);
-    state.currentScale = 1; // Reset scale tracker
+    
+    // 3. RE-INITIALIZE TRACKED TRANSFORMS
+    // This is the "Secret Sauce": we need to re-run trackTransforms 
+    // or manually reset state.currentScale to 1 so the drag math stays 1:1
+    state.currentScale = 1;
 
-    // 3. Move the context so the player's position is at (0,0)
-    // 4. Then move the context so (0,0) is in the center of the screen
+    // 4. PERFORM THE CAMERA ALIGNMENT
+    // Move center of screen to (0,0)
     context.translate(canvas.width / 2, canvas.height / 2);
     
-    // 5. Apply a nice zoom level (e.g., 5x zoom)
+    // Zoom in (e.g., 5x zoom)
     const zoomLevel = 5;
     context.scale(zoomLevel, zoomLevel);
-    state.currentScale = zoomLevel;
-
-    // 6. Translate back by the player's base position
+    // state.currentScale is updated automatically by your context.scale override
+    
+    // Move the player's position to the center
     context.translate(-pos.x, -pos.y);
 
-    // 7. Highlight and refresh
-    state.hoveredPlayer = target; 
+    // 5. Final render
     drawScene();
     
-    // Auto-hide tooltip after a few seconds
-    setTimeout(() => {
-        state.hoveredPlayer = null;
-        drawScene();
-    }, 3000);
-
-    console.log(`✅ Centered camera on ${username}`);
+    console.log(`✅ Camera locked to ${username}`);
 });
 
 const start = () => {
