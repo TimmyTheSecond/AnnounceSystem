@@ -101,16 +101,28 @@
 	</a>
 
 
-	<div class="fixed bottom-2 right-2 grid grid-rows-2 gap-2">
-		<a href="roblox://experiences/start?placeId=12018816388" id="joinBtn" target="_self"
-			class=" bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition z-30 flex items-center justify-center" title="Join Server">
-			<span class="material-symbols-outlined text-3xl leading-none" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
-		</a>
-		<a href="https://github.com/TimmyTheSecond/AnnounceSystem" target="_blank" rel="noopener noreferrer"
-			class="bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition z-30" title="GitHub Repository">
-			<img src="/AnnounceSystem/github-mark-white.svg" alt="GitHub Logo" width="28" height="28">
-		</a>
-	</div>
+	<div class="fixed bottom-2 right-2 grid grid-rows-3 gap-2 z-30">
+    <!-- New Search Button -->
+    <button id="searchBtn"
+        class="bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition flex items-center justify-center"
+        title="Search Players">
+        <span class="material-symbols-outlined text-3xl leading-none">search</span>
+    </button>
+
+    <!-- Join Button -->
+    <a href="roblox://experiences/start?placeId=12018816388" id="joinBtn" target="_self"
+        class="bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition flex items-center justify-center"
+        title="Join Server">
+        <span class="material-symbols-outlined text-3xl leading-none" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+    </a>
+
+    <!-- GitHub -->
+    <a href="https://github.com/TimmyTheSecond/AnnounceSystem" target="_blank" rel="noopener noreferrer"
+        class="bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition flex items-center justify-center"
+        title="GitHub Repository">
+        <img src="/AnnounceSystem/github-mark-white.svg" alt="GitHub" width="28" height="28">
+    </a>
+</div>
 
 
 	<p class="fixed bottom-2 left-3 z-20 text-zinc-500 text-sm hidden sm:block h-auto" id="hover-hint">Hover over a dot
@@ -118,6 +130,30 @@
 
 	<script src="index.js?v=22"></script>
 	<script src="TrainSystem.js" type="module"></script>
+
+	<!-- Player Search Panel -->
+<div id="searchPanel" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center">
+    <div class="bg-zinc-900 w-full max-w-lg mx-4 rounded-3xl overflow-hidden shadow-2xl">
+        <!-- Header -->
+        <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
+            <h2 class="text-2xl font-semibold">Find Player</h2>
+            <button id="closeSearch" class="text-zinc-400 hover:text-white text-3xl leading-none">×</button>
+        </div>
+
+        <!-- Search Input -->
+        <div class="p-5">
+            <div class="relative">
+                <input type="text" id="searchInput"
+                    class="w-full bg-zinc-800 text-white rounded-2xl px-5 py-4 text-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Search username...">
+                <span class="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-zinc-500">search</span>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="searchResults" class="max-h-[60vh] overflow-auto p-3"></div>
+    </div>
+</div>
 	
 </body>
 
