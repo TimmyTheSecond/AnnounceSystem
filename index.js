@@ -1066,11 +1066,7 @@ elements.reconnectBtn.addEventListener("click", () => {
 	attemptReconnect();
 });
 
-// ================== FIND PLAYER ON MAP ==================
-// ================== FIND PLAYER ON MAP ==================
-// ================== SAFE FIND PLAYER ON MAP ==================
-// ================== FIND PLAYER ON MAP (Safe Version) ==================
-// ================== FIND PLAYER ON MAP - ROBUST VERSION ==================
+// ================== FIND PLAYER ON MAP - FINAL VERSION ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
@@ -1087,31 +1083,26 @@ window.addEventListener('findPlayer', (e) => {
 
     const { x, y } = target.position;
 
-    console.log(`🔍 Centering on ${username} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+    console.log(`🔍 Centering on ${username} at (${Math.round(x)}, ${Math.round(y)})`);
 
-    // === STRONG RESET ===
-    context.save();                    // Save current state (optional)
-    context.setTransform(1, 0, 0, 1, 0, 0);  // Full reset
-    
-    // Center the player
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    // Full hard reset of transform
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    state.currentScale = 1;
 
-    const canvasPos = worldToCanvas(x, y);
+    // Calculate where the player should be on screen
+    const targetCanvasPos = worldToCanvas(x, y);
 
-    const offsetX = centerX - canvasPos.x;
-    const offsetY = centerY - canvasPos.y;
+    // Move the map so the player is roughly in the center
+    const offsetX = (canvas.width / 2) - targetCanvasPos.x;
+    const offsetY = (canvas.height / 2) - targetCanvasPos.y;
 
     context.translate(offsetX, offsetY);
-    
-    // Apply good zoom level
-    state.currentScale = 3.0;     // Increased zoom
 
-    // Make sure state knows about the new position
-    if (state.targetX !== undefined) state.targetX = x;
-    if (state.targetY !== undefined) state.targetY = y;
+    // Apply nice zoom
+    state.currentScale = 3.2;
 
     drawScene();
+
     console.log(`✅ Successfully centered and zoomed on ${username}`);
 });
 const start = () => {
