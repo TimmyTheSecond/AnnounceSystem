@@ -1066,53 +1066,34 @@ elements.reconnectBtn.addEventListener("click", () => {
 	attemptReconnect();
 });
 
-// ================== FIND PLAYER ON MAP - FINAL VERSION ==================
-// ================== NEW FIND PLAYER - DIFFERENT METHOD ==================
-// ================== FIND PLAYER ON MAP - FIXED ==================
-// ================== FIND PLAYER ON MAP - FIXED ==================
-// ================== FIND PLAYER ON MAP - FINAL FIX ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
-    if (!username) return;
-
     const allPlayers = state.getAllPlayers();
-    const target = allPlayers.find(p => p.username && p.username.toLowerCase() === username.toLowerCase());
+    const target = allPlayers.find(p => p.username?.toLowerCase() === username?.toLowerCase());
 
-    if (!target || !target.position) {
-        console.log(`❌ Player "${username}" not found`);
-        return;
-    }
+    if (!target?.position) return;
 
     const pos = worldToCanvas(target.position.x, target.position.y);
 
-    // 1. COMPLETELY RESET THE TRACKED MATRIX
-    // We don't just use setTransform; we call context.setTransform(1,0,0,1,0,0)
-    // and then manually reset our state tracker.
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    
-    // Reset our internal scale tracker back to 1
+    // 1. Reset everything to zero
+    // We use the overridden methods so the 'transform' tracker follows along
+    context.setTransform(1, 0, 0, 1, 0, 0); 
     state.currentScale = 1;
 
-    // 2. APPLY TRANSFORMATIONS THROUGH THE OVERRIDDEN METHODS
-    // This ensures that 'trackTransforms' records the new position
-    // and prevents the "hall of mirrors" glitch when zooming out.
-    
-    // Center the screen
+    // 2. Move to center of screen first
     context.translate(canvas.width / 2, canvas.height / 2);
     
-    // Zoom in (Set to 5 for a good view)
+    // 3. Zoom in
     const zoomLevel = 5;
     context.scale(zoomLevel, zoomLevel);
     
-    // Move to player
+    // 4. Move to player
     context.translate(-pos.x, -pos.y);
 
-    // 3. CLEANUP
-    // Remove hovered player to ensure no outlines or tooltips appear
+    // 5. Explicitly clear hover state to fix the outline bug
     state.hoveredPlayer = null; 
-    
+
     drawScene();
-    console.log(`✅ Camera synced and centered on ${username}`);
 });
 
 const start = () => {
