@@ -1,4 +1,4 @@
-// playerSearch.js - Fixed Server Names + Find on Map
+// playerSearch.js
 let allPlayers = [];
 
 function initPlayerSearch() {
@@ -26,7 +26,9 @@ function initPlayerSearch() {
         if (e.key === "Escape") closePanel();
     });
 
-    input.addEventListener('input', () => renderResults(input.value.toLowerCase().trim()));
+    input.addEventListener('input', () => {
+        renderResults(input.value.toLowerCase().trim());
+    });
 
     window.addEventListener('playersUpdated', (e) => {
         allPlayers = e.detail || [];
@@ -37,10 +39,8 @@ function getServerNameForPlayer(player) {
     if (!player?.userId) return "Unknown Server";
 
     const serverData = window.state?.serverData || {};
-    
     for (const [jobId, data] of Object.entries(serverData)) {
         if (data.players && data.players.some(p => p.userId === player.userId)) {
-            // Make it more readable
             return jobId.length > 10 ? `Server ${jobId.slice(-8)}` : `Server ${jobId}`;
         }
     }
@@ -99,12 +99,11 @@ function renderResults(term) {
     });
 }
 
-// ================== FIND ON MAP ==================
 window.findPlayerOnMap = function(username) {
     const panel = document.getElementById('searchPanel');
     panel.style.opacity = '0';
     setTimeout(() => panel.classList.add('hidden'), 300);
-
+    
     window.dispatchEvent(new CustomEvent('findPlayer', { detail: username }));
 };
 
@@ -112,7 +111,6 @@ window.openRobloxProfile = function(userId) {
     if (userId) window.open(`https://www.roblox.com/users/${userId}/profile`, '_blank');
 };
 
-// Initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPlayerSearch);
 } else {
