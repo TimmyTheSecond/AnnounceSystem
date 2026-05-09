@@ -1068,6 +1068,7 @@ elements.reconnectBtn.addEventListener("click", () => {
 
 // ================== FIND PLAYER ON MAP - FINAL VERSION ==================
 // ================== NEW FIND PLAYER - DIFFERENT METHOD ==================
+// ================== FIND PLAYER ON MAP - FIXED ==================
 window.addEventListener('findPlayer', (e) => {
     const username = e.detail;
     if (!username) return;
@@ -1075,33 +1076,43 @@ window.addEventListener('findPlayer', (e) => {
     const allPlayers = state.getAllPlayers();
     const target = allPlayers.find(p => p.username && p.username.toLowerCase() === username.toLowerCase());
 
-    if (!target?.position) {
+    if (!target || !target.position) {
         console.log(`❌ Player "${username}" not found`);
         return;
     }
 
-    const { x, y } = target.position;
+    // 1. Get the player's coordinates in the "base" canvas space (before zooming/panning)
+    const pos = worldToCanvas(target.position.x, target.position.y);
 
-    console.log(`🔍 Finding ${username} at (${Math.round(x)}, ${Math.round(y)})`);
+    // 2. Reset the transformation matrix to default (Identity Matrix)
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    state.currentScale = 1; // Reset scale tracker
 
-    // Different strategy: Use state target variables + highlight
-    state.targetX = x;
-    state.targetY = y;
+    // 3. Move the context so the player's position is at (0,0)
+    // 4. Then move the context so (0,0) is in the center of the screen
+    context.translate(canvas.width / 2, canvas.height / 2);
     
-    // Force camera to target
-    if (typeof state.cameraX !== 'undefined') state.cameraX = x;
-    if (typeof state.cameraY !== 'undefined') state.cameraY = y;
+    // 5. Apply a nice zoom level (e.g., 5x zoom)
+    const zoomLevel = 5;
+    context.scale(zoomLevel, zoomLevel);
+    state.currentScale = zoomLevel;
 
-    // Strong zoom
-    state.currentScale = 4.0;
+    // 6. Translate back by the player's base position
+    context.translate(-pos.x, -pos.y);
 
-    // Highlight the player for 3 seconds
-    state.highlightedPlayer = username;
-    setTimeout(() => { state.highlightedPlayer = null; drawScene(); }, 3000);
-
+    // 7. Highlight and refresh
+    state.hoveredPlayer = target; 
     drawScene();
-    console.log(`✅ Highlighted and zoomed toward ${username}`);
+    
+    // Auto-hide tooltip after a few seconds
+    setTimeout(() => {
+        state.hoveredPlayer = null;
+        drawScene();
+    }, 3000);
+
+    console.log(`✅ Centered camera on ${username}`);
 });
+
 const start = () => {
 	trackTransforms();
 	loadMapImages();
