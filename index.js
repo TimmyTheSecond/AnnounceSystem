@@ -1015,16 +1015,31 @@ const handleMouseEvents = () => {
 
     // Wheel (zoom) remains fully enabled
     canvas.addEventListener(
-        "wheel",
-        (event) => {
-            event.preventDefault();
-            const zoomIntensity = 0.1;
-            const scale = event.deltaY < 0 ? 1 + zoomIntensity : 1 - zoomIntensity;
-            const mousePosition = getCanvasCoordinates(event);
-            zoomAt(mousePosition.x, mousePosition.y, scale);
-        },
-        { passive: false },
-    );
+  "wheel",
+  (event) => {
+    event.preventDefault();
+
+    const zoomIntensity = 0.1;
+    const scale = event.deltaY < 0 ? 1 + zoomIntensity : 1 - zoomIntensity;
+
+    // FOLLOW MODE OVERRIDE
+    if (state.isFollowing && state.lockedPlayer) {
+      const target = state.getAllPlayers().find(
+        p => p.username === state.lockedPlayer
+      );
+
+      if (target?.position) {
+        const newScale = state.currentScale * scale;
+        lockOntoPlayer(target, newScale);
+      }
+      return;
+    }
+
+    const mousePosition = getCanvasCoordinates(event);
+    zoomAt(mousePosition.x, mousePosition.y, scale);
+  },
+  { passive: false }
+);
 };
 
 const handleTouchEvents = () => {
@@ -1175,8 +1190,10 @@ const showLockedTooltip = (player) => {
     // Basic info
     panel.querySelector('#locked-name').textContent = player.username || "Unknown";
 
-    const isTrain = !!(player.trainData && Array.isArray(player.trainData) && 
-                      player.trainData[2] && player.trainData[2] !== "----");
+    const isTrain =
+  Array.isArray(player.trainData) &&
+  player.trainData[2] &&
+  player.trainData[2] !== "----";
 
     // Destination
     const dest = player.trainData && Array.isArray(player.trainData) 
@@ -1189,7 +1206,7 @@ const showLockedTooltip = (player) => {
     const classEl = panel.querySelector('#locked-class');
     const serverEl = panel.querySelector('#locked-server');
 
-    if (isTrain) {
+	if (isTrain) {
         const [, trainClass, headcode] = player.trainData;
         headcodeEl.textContent = headcode || "—";
         classEl.textContent = trainClass || "—";
