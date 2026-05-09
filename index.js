@@ -236,11 +236,9 @@ const trackTransforms = () => {
 	};
 
 	context.scale = function (scaleX, scaleY) {
-		transform = transform.scaleNonUniform(scaleX, scaleY);
-		state.currentScale *= scaleX;
-		return original.scale.call(context, scaleX, scaleY);
-	};
-
+	transform = transform.scaleNonUniform(scaleX, scaleY);
+	return original.scale.call(context, scaleX, scaleY);
+};
 	context.translate = function (distanceX, distanceY) {
 		transform = transform.translate(distanceX, distanceY);
 		return original.translate.call(context, distanceX, distanceY);
@@ -836,7 +834,7 @@ const drawScene = () => {
 			context.fill();
 
 			context.strokeStyle = isHovered ? "white" : "black";
-			context.lineWidth = Math.max((isHovered ? 1 : 0.7) * scaleFactor, 0.5);
+			context.lineWidth = Math.max((isHovered ? 0.7 : 0.4) * scaleFactor, 0.25);
 			context.stroke();
 		}
 	});
