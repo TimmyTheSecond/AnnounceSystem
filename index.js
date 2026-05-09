@@ -271,7 +271,6 @@ const zoomAt = (screenX, screenY, scaleFactor) => {
 	context.scale(scaleFactor, scaleFactor);
 	context.translate(-point.x, -point.y);
 
-	state.currentScale *= scaleFactor;
 	drawScene();
 };
 
@@ -1089,32 +1088,34 @@ window.addEventListener('findPlayer', (e) => {
 
     const zoomLevel = 5;
 
-    // HARD RESET EVERYTHING
+    // FULL RESET
     context.setTransform(1, 0, 0, 1, 0, 0);
-
-    // Reset tracked scale
     state.currentScale = 1;
 
-    // Re-center map exactly like initializeMap()
+    // Rebuild default centered map
     const center = worldToCanvas(WORLD_CENTER.x, WORLD_CENTER.y);
 
     context.translate(
-        window.innerWidth / 2 - center.x,
-        window.innerHeight / 2 - center.y
+        canvas.width / 2 - center.x,
+        canvas.height / 2 - center.y
     );
 
-    // NOW get player position
+    // Get player position AFTER reset
     const playerPos = worldToCanvas(
         target.position.x,
         target.position.y
     );
 
-    // Zoom toward player
-    context.translate(playerPos.x, playerPos.y);
+    // Center player on screen
+    context.translate(
+        canvas.width / 2 - playerPos.x,
+        canvas.height / 2 - playerPos.y
+    );
 
+    // Zoom around screen center
+    context.translate(canvas.width / 2, canvas.height / 2);
     context.scale(zoomLevel, zoomLevel);
-
-    context.translate(-playerPos.x, -playerPos.y);
+    context.translate(-canvas.width / 2, -canvas.height / 2);
 
     state.currentScale = zoomLevel;
 
