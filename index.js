@@ -960,9 +960,22 @@ const handleMouseEvents = () => {
         state.isDragging = true;
         return false;
 
-		if (player) {
-    window.dispatchEvent(new CustomEvent('findPlayer', {
-        detail: player.username
+		canvas.addEventListener("click", (event) => {
+    if (state.isDragging) return;
+
+    const mousePosition = getCanvasCoordinates(event);
+    const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
+
+    if (!player) return;
+
+    // LOCK PLAYER (unified system)
+    state.lockedPlayer = player.username;
+    state.isFollowing = true;
+
+    lockOntoPlayer(player, 6);
+    showLockedTooltip(player);
+});
+		
     }));
 }
 		
