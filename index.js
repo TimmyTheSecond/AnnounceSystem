@@ -976,10 +976,6 @@ const handleMouseEvents = () => {
     showLockedTooltip(player);
 });
 		
-    }));
-}
-		
-    });
 
     canvas.addEventListener("mousemove", (event) => {
         if (state.isFollowing && !state.isDragging) {
