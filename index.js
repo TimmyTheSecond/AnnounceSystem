@@ -959,6 +959,13 @@ const handleMouseEvents = () => {
         );
         state.isDragging = true;
         return false;
+
+		if (player) {
+    window.dispatchEvent(new CustomEvent('findPlayer', {
+        detail: player.username
+    }));
+}
+		
     });
 
     canvas.addEventListener("mousemove", (event) => {
