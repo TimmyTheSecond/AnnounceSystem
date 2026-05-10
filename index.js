@@ -846,26 +846,38 @@ const drawScene = () => {
 			state.previousPlayerPosition[player.userId] = { position: player.position, angle: markerAngle };
 		}
 		else { // not a train
-    		context.fillStyle = getPlayerColor(name);
-    
-    		const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
-    
-   		 const baseRadius = isHovered ? 2.2 : 1.8;           // smaller than before
-    		const radius = baseRadius * dotScaleFactor;
+    context.fillStyle = getPlayerColor(name);
 
-   		 // Fill
-    		context.beginPath();
-    		context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
-    		context.fill();
+    // Keep your existing dot scaling logic
+    const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
+    
+    const baseRadius = isHovered ? 2.2 : 1.8;
+    const radius = baseRadius * dotScaleFactor;
 
-    		// Outline
-   		 	context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
+    // Fill
+    context.beginPath();
+    context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
+    context.fill();
+
+    // --- Fixed Outline Logic ---
+    context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
+
+    // 1. We use a separate factor for the line that grows slightly more aggressive than the dot
+    const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.35);
     
-   			 const baseLineWidth = isHovered ? 0.315 : 0.115;       // thinner as requested
-   			 context.lineWidth = Math.max(baseLineWidth * dotScaleFactor, 0.325);
-    
-   			 context.lineJoin = "round";
-    		 context.stroke();
+    // 2. Define the base width
+    const baseLineWidth = isHovered ? 0.35 : 0.15;
+
+    /* 3. The Fix: 
+       Instead of a flat number like 0.325, we use (0.5 / state.currentScale).
+       This ensures the line is ALWAYS at least 0.5 pixels thick on the 
+       user's physical screen, no matter how far they zoom out.
+    */
+    const minPhysicalWidth = 0.5 / state.currentScale; 
+    context.lineWidth = Math.max(baseLineWidth * lineScaleFactor, minPhysicalWidth);
+
+    context.lineJoin = "round";
+    context.stroke();
 }
 	});
 
