@@ -848,9 +848,8 @@ const drawScene = () => {
 		else { // not a train
     context.fillStyle = getPlayerColor(name);
 
-    // Keep your existing dot scaling logic
+    // Standard dot scaling
     const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
-    
     const baseRadius = isHovered ? 2.2 : 1.8;
     const radius = baseRadius * dotScaleFactor;
 
@@ -859,21 +858,20 @@ const drawScene = () => {
     context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
     context.fill();
 
-    // --- Fixed Outline Logic ---
+    // --- High-Visibility Outline ---
     context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
 
-    // 1. We use a separate factor for the line that grows slightly more aggressive than the dot
-    const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.35);
+    // This factor controls how much the line grows as you zoom out
+    const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.4);
     
-    // 2. Define the base width
-    const baseLineWidth = isHovered ? 0.45 : 0.25;
+    // SIGNIFICANTLY INCREASED:
+    // baseLineWidth handles the look when zoomed IN
+    const baseLineWidth = isHovered ? 0.8 : 0.5; 
 
-    /* 3. The Fix: 
-       Instead of a flat number like 0.325, we use (0.5 / state.currentScale).
-       This ensures the line is ALWAYS at least 0.5 pixels thick on the 
-       user's physical screen, no matter how far they zoom out.
-    */
-    const minPhysicalWidth = 0.8 / state.currentScale; 
+    // minPhysicalWidth handles the look when zoomed OUT
+    // Increasing 0.8 to 1.5 forces a much bolder line at a distance
+    const minPhysicalWidth = 1.5 / state.currentScale; 
+    
     context.lineWidth = Math.max(baseLineWidth * lineScaleFactor, minPhysicalWidth);
 
     context.lineJoin = "round";
