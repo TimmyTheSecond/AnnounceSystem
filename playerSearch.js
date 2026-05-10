@@ -36,16 +36,22 @@ function initPlayerSearch() {
 function getServerNameForPlayer(player) {
     if (!player?.userId) return "Unknown Server";
 
-    const serverData = window.state?.serverData;
+    const serverData = window.state?.serverData || state?.serverData;
 
-    if (!serverData || Object.keys(serverData).length === 0) {
-        return "Unknown Server";
-    }
+    if (!serverData) return "Unknown Server";
+
+    const targetId = String(player.userId);
 
     for (const [jobId, data] of Object.entries(serverData)) {
-        if (!Array.isArray(data.players)) continue;
+        const players = data.players;
 
-        if (data.players.some(p => p.userId === player.userId)) {
+        if (!Array.isArray(players)) continue;
+
+        const found = players.some(p =>
+            String(p.userId) === targetId
+        );
+
+        if (found) {
             return jobId.length > 10
                 ? `Server ${jobId.slice(-8)}`
                 : `Server ${jobId}`;
