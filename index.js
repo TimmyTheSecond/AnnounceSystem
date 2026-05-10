@@ -959,22 +959,24 @@ const handleMouseEvents = () => {
         );
         state.isDragging = true;
         return false;
+    });
 
-		canvas.addEventListener("click", (event) => {
-    if (state.isDragging) return;
+    canvas.addEventListener("click", (event) => {
+        if (state.isDragging) return;
 
-    const mousePosition = getCanvasCoordinates(event);
-    const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
+        const mousePosition = getCanvasCoordinates(event);
+        const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
 
-    if (!player) return;
+        if (!player) return;
 
-    // LOCK PLAYER (unified system)
-    state.lockedPlayer = player.username;
-    state.isFollowing = true;
+        // LOCK PLAYER (unified system)
+        state.lockedPlayer = player.username;
+        state.isFollowing = true;
 
-    lockOntoPlayer(player, 6);
-    showLockedTooltip(player);
-});
+        lockOntoPlayer(player, 6);
+        showLockedTooltip(player);
+    });
+};
 		
 
     canvas.addEventListener("mousemove", (event) => {
