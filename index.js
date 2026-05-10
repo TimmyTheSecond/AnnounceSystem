@@ -848,7 +848,6 @@ const drawScene = () => {
 		else { // not a train
     context.fillStyle = getPlayerColor(name);
 
-    // Standard dot scaling
     const dotScaleFactor = Math.max(0.35, 1 / Math.pow(state.currentScale, 0.42));
     const baseRadius = isHovered ? 2.2 : 1.8;
     const radius = baseRadius * dotScaleFactor;
@@ -858,20 +857,26 @@ const drawScene = () => {
     context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
     context.fill();
 
-    // --- High-Visibility Outline ---
+    // --- Balanced Outline ---
     context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
 
-    // This factor controls how much the line grows as you zoom out
-    const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.4);
-    
-    // SIGNIFICANTLY INCREASED:
-    // baseLineWidth handles the look when zoomed IN
-    const baseLineWidth = isHovered ? 0.8 : 0.5; 
+    /* 1. INCREASE BASE LINE WIDTH 
+       This controls the "zoomed in" thickness. 
+       I've bumped this significantly so it's thick when you're close.
+    */
+    const baseLineWidth = isHovered ? 1.2 : 0.8; 
 
-    // minPhysicalWidth handles the look when zoomed OUT
-    // Increasing 0.8 to 1.5 forces a much bolder line at a distance
-    const minPhysicalWidth = 1.5 / state.currentScale; 
+    /* 2. WEAKEN THE SCALE FACTOR
+       By lowering the power (from 0.4 to 0.2), the line won't 
+       grow nearly as much when you zoom out.
+    */
+    const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.2);
     
+    /* 3. TIGHTEN THE FLOOR 
+       This prevents it from getting "too thick" at a distance.
+    */
+    const minPhysicalWidth = 0.6 / state.currentScale; 
+
     context.lineWidth = Math.max(baseLineWidth * lineScaleFactor, minPhysicalWidth);
 
     context.lineJoin = "round";
