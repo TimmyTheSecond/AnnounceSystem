@@ -857,23 +857,22 @@ const drawScene = () => {
     context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
     context.fill();
 
-    // --- Balanced Outline ---
+    // --- The "Sweet Spot" Outline ---
     context.strokeStyle = isHovered ? "#ffffff" : "#1a1a1a";
 
-    /* 1. INCREASE BASE LINE WIDTH 
-       This controls the "zoomed in" thickness. 
-       I've bumped this significantly so it's thick when you're close.
+    /* 1. Zoomed-In Thickness
+       Dropped from 0.8 to 0.6 for that "tiny bit thinner" look when close up.
     */
-    const baseLineWidth = isHovered ? 1.2 : 0.8; 
+    const baseLineWidth = isHovered ? 1.0 : 0.6; 
 
-    /* 2. WEAKEN THE SCALE FACTOR
-       By lowering the power (from 0.4 to 0.2), the line won't 
-       grow nearly as much when you zoom out.
+    /* 2. Scaling Speed
+       Kept at 0.2 so it remains stable as you zoom out.
     */
     const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.2);
     
-    /* 3. TIGHTEN THE FLOOR 
-       This prevents it from getting "too thick" at a distance.
+    /* 3. The Distance Floor
+       Kept at 0.6/state.currentScale to ensure visibility at a distance 
+       without becoming a blob.
     */
     const minPhysicalWidth = 0.6 / state.currentScale; 
 
