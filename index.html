@@ -27,6 +27,32 @@
 			font-family: 'Inter';
 			src: local('Inter'), url(/Inter.woff2) format('woff2');
 		}
+
+	#searchResults {
+ 	   scrollbar-width: thin;
+  	  scrollbar-color: #18181b #18181b; /* Firefox */
+	}
+
+/* Chrome / Edge / Safari */
+	#searchResults::-webkit-scrollbar {
+	    width: 10px;
+	}
+
+	#searchResults::-webkit-scrollbar-track {
+  	  background: #18181b; /* same as bg-zinc-900 */
+  	  border-radius: 12px;
+	}
+
+	#searchResults::-webkit-scrollbar-thumb {
+ 	   background: #27272a;
+ 	   border-radius: 12px;
+ 	   border: 2px solid #18181b;
+	}
+
+	#searchResults::-webkit-scrollbar-thumb:hover {
+  	  background: #3f3f46;
+	}
+		
 	</style>
 </head>
 
