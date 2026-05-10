@@ -53,8 +53,8 @@ function getServerNameForPlayer(player) {
 
         if (found) {
             return jobId.length > 10
-                ? `Server ${jobId.slice(-8)}`
-                : `Server ${jobId}`;
+                ? `${jobId.slice(-8)}`
+                : `${jobId}`;
         }
     }
 
