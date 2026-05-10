@@ -866,7 +866,7 @@ const drawScene = () => {
     const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.35);
     
     // 2. Define the base width
-    const baseLineWidth = isHovered ? 0.35 : 0.15;
+    const baseLineWidth = isHovered ? 0.7 : 0.4;
 
     /* 3. The Fix: 
        Instead of a flat number like 0.325, we use (0.5 / state.currentScale).
