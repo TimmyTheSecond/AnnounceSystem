@@ -1263,6 +1263,14 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// --- GLOBAL PLAYER LOCK SYSTEM ---
+window.lockPlayerByUsername = function(username) {
+    const event = new CustomEvent('findPlayer', {
+        detail: username
+    });
+    window.dispatchEvent(event);
+};
+
 const start = () => {
 	trackTransforms();
 	context.save();
