@@ -866,14 +866,14 @@ const drawScene = () => {
     const lineScaleFactor = 1 / Math.pow(state.currentScale, 0.35);
     
     // 2. Define the base width
-    const baseLineWidth = isHovered ? 0.7 : 0.4;
+    const baseLineWidth = isHovered ? 0.45 : 0.25;
 
     /* 3. The Fix: 
        Instead of a flat number like 0.325, we use (0.5 / state.currentScale).
        This ensures the line is ALWAYS at least 0.5 pixels thick on the 
        user's physical screen, no matter how far they zoom out.
     */
-    const minPhysicalWidth = 2 / state.currentScale; 
+    const minPhysicalWidth = 0.8 / state.currentScale; 
     context.lineWidth = Math.max(baseLineWidth * lineScaleFactor, minPhysicalWidth);
 
     context.lineJoin = "round";
