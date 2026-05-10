@@ -972,6 +972,8 @@ const handleMouseEvents = () => {
         // LOCK PLAYER (unified system)
         state.lockedPlayer = player.username;
         state.isFollowing = true;
+		state.hoveredPlayer = null;
+		elements.tooltip.classList.add("hidden");
 
         lockOntoPlayer(player, 6);
         showLockedTooltip(player);
