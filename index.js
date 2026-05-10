@@ -976,7 +976,6 @@ const handleMouseEvents = () => {
         lockOntoPlayer(player, 6);
         showLockedTooltip(player);
     });
-};
 		
 
     canvas.addEventListener("mousemove", (event) => {
