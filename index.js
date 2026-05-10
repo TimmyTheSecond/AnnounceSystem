@@ -873,7 +873,7 @@ const drawScene = () => {
        This ensures the line is ALWAYS at least 0.5 pixels thick on the 
        user's physical screen, no matter how far they zoom out.
     */
-    const minPhysicalWidth = 0.5 / state.currentScale; 
+    const minPhysicalWidth = 2 / state.currentScale; 
     context.lineWidth = Math.max(baseLineWidth * lineScaleFactor, minPhysicalWidth);
 
     context.lineJoin = "round";
