@@ -49,7 +49,7 @@ function getServerNameForPlayer(player) {
 
         if (found) {
             // ALWAYS consistent format
-            return `Server ${jobId.slice(-6)}`;
+            return `${jobId.slice(-6)}`;
         }
     }
 
