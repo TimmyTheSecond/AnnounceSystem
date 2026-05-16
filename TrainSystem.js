@@ -1,6 +1,6 @@
 // =============================================
 // Dovedale Train Announcement System (v2.1)
-// Fixed: Server Filtering using state.serverData
+// Fixed: Server Filtering (6 character exact match)
 // =============================================
 console.log("📋 TrainSystem.js loaded");
 
@@ -43,17 +43,33 @@ class TrainDetectionSystem {
         } catch (e) {}
     }
 
+    getServerNameForPlayer(player) {
+        if (!player?.userId) return null;
+        const serverData = window.state?.serverData || window?.state?.serverData;
+        if (!serverData) return null;
+
+        const targetId = String(player.userId);
+        for (const [jobId, data] of Object.entries(serverData)) {
+            const players = data.players;
+            if (!Array.isArray(players)) continue;
+            if (players.some(p => String(p.userId) === targetId)) {
+                return jobId.slice(-6);   // Always returns last 6 characters
+            }
+        }
+        return null;
+    }
+
     processTrains(players, targetServerId = null) {
         const now = Date.now();
         let filteredPlayers = players;
 
-        // If targeting a specific server, filter players using the same logic as your playerSearch.js
-        if (targetServerId) {
-            const cleanTarget = String(targetServerId).trim().toLowerCase();
+        // Filter for specific server (exact 6 character match)
+        if (targetServerId && targetServerId !== "all") {
+            const target = String(targetServerId).trim().toUpperCase();
+            
             filteredPlayers = players.filter(p => {
-                if (!p.userId) return false;
-                const serverName = this.getServerNameForPlayer(p);
-                return String(serverName).toLowerCase() === cleanTarget;
+                const serverTag = this.getServerNameForPlayer(p);
+                return serverTag && serverTag.toUpperCase() === target;
             });
         }
 
@@ -95,7 +111,7 @@ class TrainDetectionSystem {
             const stateData = this.trainStates.get(trainId);
             stateData.lastSeen = now;
 
-            // Headcode Change (5 min debounce)
+            // Headcode change with 5 min debounce
             if (stateData.lastHeadcode !== currentHeadcode) {
                 if (now - (stateData.lastHeadcodeChange || 0) > this.DEBOUNCE_INTERVAL) {
                     this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
@@ -104,7 +120,7 @@ class TrainDetectionSystem {
                 stateData.lastHeadcode = currentHeadcode;
             }
 
-            // Station Entries
+            // Station entries
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
@@ -139,23 +155,6 @@ class TrainDetectionSystem {
             }
         }
     }
-
-    // Same logic as your playerSearch.js
-    getServerNameForPlayer(player) {
-        if (!player?.userId) return null;
-        const serverData = window.state?.serverData || window?.state?.serverData;
-        if (!serverData) return null;
-
-        const targetId = String(player.userId);
-        for (const [jobId, data] of Object.entries(serverData)) {
-            const players = data.players;
-            if (!Array.isArray(players)) continue;
-            if (players.some(p => String(p.userId) === targetId)) {
-                return `${jobId.slice(-6)}`;
-            }
-        }
-        return null;
-    }
 }
 
 const detectionSystem = new TrainDetectionSystem();
@@ -168,7 +167,7 @@ export function startAnnouncementSystem(serverId = "all") {
     console.log(`🚀 Starting Dovedale Announcement System...`);
 
     if (serverId && serverId !== "all") {
-        console.log(`🎯 Targeting server: ${serverId}`);
+        console.log(`🎯 Targeting server: ${serverId} (6-char)`);
     } else {
         console.log(`🌐 Monitoring ALL servers`);
     }
@@ -200,4 +199,4 @@ window.startAnnouncementSystem = startAnnouncementSystem;
 console.log("✅ System ready!");
 console.log("Usage:");
 console.log("   startAnnouncementSystem()           → All servers");
-console.log("   startAnnouncementSystem('2e1a96')   → Only server 2e1a96");
+console.log("   startAnnouncementSystem('2e1a96')   → Only that server");
