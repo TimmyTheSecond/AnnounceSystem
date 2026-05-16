@@ -1,7 +1,8 @@
 // =============================================
-// Dovedale Train Announcement System (v2.2)
+// Dovedale Train Announcement System (v2.3)
 // Fixed Server Filtering
 // =============================================
+
 console.log("📋 TrainSystem.js loaded");
 
 const DEFAULT_STATIONS = [
@@ -48,11 +49,11 @@ class TrainDetectionSystem {
                 })
             });
         } catch (e) {
-            console.warn("Announcement failed");
+            console.warn("⚠️ Failed to send announcement");
         }
     }
 
-    // Build a fast lookup map of userId -> server
+    // Build lookup map
     getPlayerServerMap() {
         const serverData = window.state?.serverData;
 
@@ -70,7 +71,7 @@ class TrainDetectionSystem {
 
                 map.set(String(player.userId), {
                     full: jobId,
-                    short: jobId.slice(-6).toUpperCase()
+                    short: jobId.slice(-6)
                 });
             }
         }
@@ -86,17 +87,18 @@ class TrainDetectionSystem {
         return playerServerMap.get(String(player.userId)) || null;
     }
 
-    // Get all active servers
+    // Get active servers
     getAllServers() {
         const serverData = window.state?.serverData;
 
         if (!serverData) {
+            console.warn("⚠️ state.serverData not loaded yet");
             return [];
         }
 
         return Object.keys(serverData).map(jobId => ({
             full: jobId,
-            short: jobId.slice(-6).toUpperCase()
+            short: jobId.slice(-6)
         }));
     }
 
@@ -109,9 +111,7 @@ class TrainDetectionSystem {
 
         // Filter by server
         if (targetServerId && targetServerId !== "all") {
-            const target = String(targetServerId)
-                .trim()
-                .toUpperCase();
+            const target = String(targetServerId).trim();
 
             filteredPlayers = players.filter(player => {
                 const serverInfo = this.getServerNameForPlayer(
@@ -125,9 +125,13 @@ class TrainDetectionSystem {
 
                 return (
                     serverInfo.short === target ||
-                    serverInfo.full === targetServerId
+                    serverInfo.full === target
                 );
             });
+
+            console.log(
+                `🎯 Server filter ${target}: ${filteredPlayers.length}/${players.length} players matched`
+            );
         }
 
         const activeTrains = filteredPlayers.filter(player => {
@@ -143,7 +147,7 @@ class TrainDetectionSystem {
 
             if (!pos) continue;
 
-            // First time seeing train
+            // New train
             if (!this.trainStates.has(trainId)) {
                 const spawnZone = this.stationZones.find(zone => {
                     return (
@@ -190,8 +194,7 @@ class TrainDetectionSystem {
             // Headcode changed
             if (stateData.lastHeadcode !== currentHeadcode) {
                 if (
-                    now -
-                        (stateData.lastHeadcodeChange || 0) >
+                    now - (stateData.lastHeadcodeChange || 0) >
                     this.DEBOUNCE_INTERVAL
                 ) {
                     this.announce(
@@ -227,12 +230,12 @@ class TrainDetectionSystem {
                     stateData.stationStates.push(zoneState);
                 }
 
-                // Train entered station
+                // Entered station
                 if (!zoneState.isInside && isInside) {
                     if (
                         !stateData.suppressNextEntry &&
                         now - zoneState.lastAnnouncement >
-                            this.DEBOUNCE_INTERVAL
+                        this.DEBOUNCE_INTERVAL
                     ) {
                         this.announce(
                             `${currentHeadcode} is entering ${zone.name}`
@@ -268,17 +271,19 @@ export function startAnnouncementSystem(serverId = "all") {
         ws.close();
     }
 
-    // List servers
-    const availableServers =
-        detectionSystem.getAllServers();
+    // Delay server listing slightly so state.serverData can load
+    setTimeout(() => {
+        const availableServers =
+            detectionSystem.getAllServers();
 
-    console.log(
-        `📡 Found ${availableServers.length} active servers:`
-    );
+        console.log(
+            `📡 Found ${availableServers.length} active servers:`
+        );
 
-    availableServers.forEach(server => {
-        console.log(`   → ${server.short}`);
-    });
+        availableServers.forEach(server => {
+            console.log(`   → ${server.short}`);
+        });
+    }, 2000);
 
     if (serverId && serverId !== "all") {
         console.log(`🎯 Targeting server: ${serverId}`);
@@ -343,7 +348,7 @@ console.log(
     "   startAnnouncementSystem()"
 );
 console.log(
-    "   startAnnouncementSystem('2E1A96')"
+    "   startAnnouncementSystem('2e1a96')"
 );
 console.log(
     "   startAnnouncementSystem('full-job-id')"
