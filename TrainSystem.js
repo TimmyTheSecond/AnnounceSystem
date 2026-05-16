@@ -52,23 +52,27 @@ class TrainDetectionSystem {
             const currentHeadcode = train.trainData.headcode;
             const pos = train.position;
 
+            // === NEW SPAWN HANDLING ===
             if (!this.trainStates.has(trainId)) {
                 const spawnZone = this.stationZones.find(z => this.calculateDistance(pos, z.center) <= z.radius);
                 const spawnedInStation = !!spawnZone;
 
                 if (spawnedInStation) {
-                    this.announce(`${currentHeadcode} is entering ${spawnZone.name}`);
+                    this.announce(`${currentHeadcode} spawned at ${spawnZone.name}`);
+                } else {
+                    this.announce(`${currentHeadcode} spawned out on the line`);
                 }
 
                 const initialState = {
                     lastHeadcode: currentHeadcode,
                     stationStates: [],
                     lastSeen: now,
-                    suppressNextEntry: !spawnedInStation
+                    suppressNextEntry: !spawnedInStation   // Suppress first station entry only if spawned on line
                 };
 
                 this.trainStates.set(trainId, initialState);
 
+                // Pre-mark station as inside if spawned in station (prevents double "entering")
                 if (spawnedInStation) {
                     initialState.stationStates.push({
                         stationName: spawnZone.name,
@@ -82,11 +86,13 @@ class TrainDetectionSystem {
             const stateData = this.trainStates.get(trainId);
             stateData.lastSeen = now;
 
+            // Headcode Change
             if (stateData.lastHeadcode !== currentHeadcode) {
                 this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
                 stateData.lastHeadcode = currentHeadcode;
             }
 
+            // Station Entries
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
@@ -105,6 +111,7 @@ class TrainDetectionSystem {
                         zoneState.lastAnnouncement = now;
                     }
 
+                    // Disable suppression after first station entry
                     if (stateData.suppressNextEntry) {
                         stateData.suppressNextEntry = false;
                     }
@@ -114,6 +121,7 @@ class TrainDetectionSystem {
             }
         }
 
+        // Cleanup
         for (const [id, state] of this.trainStates.entries()) {
             if (now - state.lastSeen > this.EXPIRY_TIME) {
                 this.trainStates.delete(id);
@@ -150,14 +158,9 @@ export function startAnnouncementSystem(serverId = "all") {
         setTimeout(() => startAnnouncementSystem(serverId), 5000);
     };
 
-    ws.onerror = (err) => {
-        console.error("❌ WebSocket error:", err);
-    };
+    ws.onerror = (err) => console.error("❌ WebSocket error:", err);
 }
 
 window.startAnnouncementSystem = startAnnouncementSystem;
 console.log("✅ System ready!");
-console.log("Usage:");
-console.log("   startAnnouncementSystem()           → All servers");
-console.log("   startAnnouncementSystem('serverid') → Specific server");
-console.log("   startAnnouncementSystem('all')      → All servers");
+console.log("Usage: startAnnouncementSystem() or startAnnouncementSystem('serverid')");
