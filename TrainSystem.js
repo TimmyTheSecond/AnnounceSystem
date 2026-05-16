@@ -1,6 +1,6 @@
 // =============================================
 // Dovedale Train Announcement System (v2.1)
-// Updated: Better WebSocket Data Handling + Server Filtering
+// Updated: 10-Second Silent Initialization
 // =============================================
 console.log("📋 TrainSystem.js loaded");
 
@@ -24,6 +24,8 @@ class TrainDetectionSystem {
         this.trainStates = new Map();
         this.DEBOUNCE_INTERVAL = 5 * 60 * 1000;
         this.EXPIRY_TIME = 10000;
+        this.readyTime = Date.now() + 10000; // 10 seconds from now
+        this.isReady = false;
     }
 
     calculateDistance(p1, p2) {
@@ -43,7 +45,6 @@ class TrainDetectionSystem {
         } catch (e) {}
     }
 
-    // Extract 6-char server ID from jobId
     getServerId(jobId) {
         if (!jobId) return null;
         return String(jobId).slice(-6);
@@ -52,7 +53,12 @@ class TrainDetectionSystem {
     processTrains(data, targetServerId = null) {
         const now = Date.now();
         
-        // Handle both possible formats
+        // Check if we're past the 10-second silent period
+        if (!this.isReady && now >= this.readyTime) {
+            this.isReady = true;
+            console.log("✅ System is now fully active - Announcements enabled");
+        }
+
         let players = [];
         let jobId = null;
 
@@ -69,10 +75,7 @@ class TrainDetectionSystem {
         if (targetServerId && targetServerId !== "all" && jobId) {
             const target = String(targetServerId).trim().toUpperCase();
             const currentServer = this.getServerId(jobId).toUpperCase();
-            
-            if (currentServer !== target) {
-                return; // Skip this message if it's not the target server
-            }
+            if (currentServer !== target) return;
         }
 
         const activeTrains = players.filter(p => p.trainData?.headcode);
@@ -86,12 +89,7 @@ class TrainDetectionSystem {
                 const spawnZone = this.stationZones.find(z => this.calculateDistance(pos, z.center) <= z.radius);
                 const spawnedInStation = !!spawnZone;
 
-                if (spawnedInStation) {
-                    this.announce(`${currentHeadcode} spawned at ${spawnZone.name}`);
-                } else {
-                    this.announce(`${currentHeadcode} spawned out on the line`);
-                }
-
+                // Silent spawn tracking during first 10 seconds
                 this.trainStates.set(trainId, {
                     lastHeadcode: currentHeadcode,
                     lastHeadcodeChange: now,
@@ -107,20 +105,33 @@ class TrainDetectionSystem {
                         lastAnnouncement: now
                     });
                 }
+
+                // Only announce spawn AFTER silent period
+                if (this.isReady) {
+                    if (spawnedInStation) {
+                        this.announce(`${currentHeadcode} spawned at ${spawnZone.name}`);
+                    } else {
+                        this.announce(`${currentHeadcode} spawned out on the line`);
+                    }
+                }
                 continue;
             }
 
             const stateData = this.trainStates.get(trainId);
             stateData.lastSeen = now;
 
+            // Headcode Change
             if (stateData.lastHeadcode !== currentHeadcode) {
                 if (now - (stateData.lastHeadcodeChange || 0) > this.DEBOUNCE_INTERVAL) {
-                    this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
+                    if (this.isReady) {
+                        this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
+                    }
                     stateData.lastHeadcodeChange = now;
                 }
                 stateData.lastHeadcode = currentHeadcode;
             }
 
+            // Station Entries
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
@@ -135,7 +146,9 @@ class TrainDetectionSystem {
                     if (!stateData.suppressNextEntry && 
                         now - zoneState.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
                         
-                        this.announce(`${currentHeadcode} is entering ${zone.name}`);
+                        if (this.isReady) {
+                            this.announce(`${currentHeadcode} is entering ${zone.name}`);
+                        }
                         zoneState.lastAnnouncement = now;
                     }
 
@@ -169,6 +182,8 @@ export function startAnnouncementSystem(serverId = "all") {
     } else {
         console.log(`🌐 Monitoring ALL servers`);
     }
+
+    console.log("⏳ Silent initialization started (10 seconds)...");
 
     ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
 
