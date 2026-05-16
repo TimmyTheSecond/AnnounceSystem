@@ -1,350 +1,127 @@
-// =============================================
-// Dovedale Train Announcement System (v2.2)
-// Fixed Server Filtering
-// =============================================
-console.log("📋 TrainSystem.js loaded");
+// playerSearch.js - Clean & Reliable
+let allPlayers = [];
 
-const DEFAULT_STATIONS = [
-    { name: "Gleethrop End", center: { x: 1274, y: 3563 }, radius: 800 },
-    { name: "Dovedale East", center: { x: 1231, y: 534 }, radius: 800 },
-    { name: "Fanory Mill", center: { x: -16821, y: -3954 }, radius: 800 },
-    { name: "Mazewood", center: { x: -4650, y: 5798 }, radius: 800 },
-    { name: "Codsall Castle", center: { x: 9991, y: 5236 }, radius: 800 },
-    { name: "Masonfield", center: { x: 10667, y: -881 }, radius: 800 },
-    { name: "Ashburn", center: { x: -22012, y: -6729 }, radius: 800 },
-    { name: "Cosdale Harbour", center: { x: 4325, y: -2518 }, radius: 800 },
-    { name: "Glassbury Junction", center: { x: 11592, y: 8663 }, radius: 800 },
-    { name: "Dovedale Central", center: { x: 3157, y: 805 }, radius: 800 },
-    { name: "Satus", center: { x: -7485, y: -3055 }, radius: 800 },
-];
+function initPlayerSearch() {
+    const searchBtn = document.getElementById('searchBtn');
+    const panel = document.getElementById('searchPanel');
+    const input = document.getElementById('searchInput');
+    const resultsContainer = document.getElementById('searchResults');
+    const closeBtn = document.getElementById('closeSearch');
 
-class TrainDetectionSystem {
-    constructor() {
-        this.stationZones = DEFAULT_STATIONS;
-        this.trainStates = new Map();
-
-        this.DEBOUNCE_INTERVAL = 5 * 60 * 1000;
-        this.EXPIRY_TIME = 10000;
-    }
-
-    calculateDistance(p1, p2) {
-        const dx = p1.x - p2.x;
-        const dy = p1.y - p2.y;
-
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    async announce(message) {
-        console.log(`📢 ${message}`);
-
-        try {
-            await fetch("http://127.0.0.1:3000", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    text: message
-                })
-            });
-        } catch (e) {
-            console.warn("Announcement failed");
-        }
-    }
-
-    // Build a fast lookup map of userId -> server
-    getPlayerServerMap() {
-        const serverData = window.state?.serverData;
-
-        if (!serverData) {
-            return new Map();
-        }
-
-        const map = new Map();
-
-        for (const [jobId, data] of Object.entries(serverData)) {
-            if (!Array.isArray(data.players)) continue;
-
-            for (const player of data.players) {
-                if (!player?.userId) continue;
-
-                map.set(String(player.userId), {
-                    full: jobId,
-                    short: jobId.slice(-6).toUpperCase()
-                });
-            }
-        }
-
-        return map;
-    }
-
-    getServerNameForPlayer(player, playerServerMap) {
-        if (!player?.userId) {
-            return null;
-        }
-
-        return playerServerMap.get(String(player.userId)) || null;
-    }
-
-    // Get all active servers
-    getAllServers() {
-        const serverData = window.state?.serverData;
-
-        if (!serverData) {
-            return [];
-        }
-
-        return Object.keys(serverData).map(jobId => ({
-            full: jobId,
-            short: jobId.slice(-6).toUpperCase()
-        }));
-    }
-
-    processTrains(players, targetServerId = null) {
-        const now = Date.now();
-
-        let filteredPlayers = players;
-
-        const playerServerMap = this.getPlayerServerMap();
-
-        // Filter by server
-        if (targetServerId && targetServerId !== "all") {
-            const target = String(targetServerId)
-                .trim()
-                .toUpperCase();
-
-            filteredPlayers = players.filter(player => {
-                const serverInfo = this.getServerNameForPlayer(
-                    player,
-                    playerServerMap
-                );
-
-                if (!serverInfo) {
-                    return false;
-                }
-
-                return (
-                    serverInfo.short === target ||
-                    serverInfo.full === targetServerId
-                );
-            });
-        }
-
-        const activeTrains = filteredPlayers.filter(player => {
-            return player?.trainData?.headcode;
-        });
-
-        for (const train of activeTrains) {
-            const trainId = train.username || train.id;
-
-            const currentHeadcode = train.trainData.headcode;
-
-            const pos = train.position;
-
-            if (!pos) continue;
-
-            // First time seeing train
-            if (!this.trainStates.has(trainId)) {
-                const spawnZone = this.stationZones.find(zone => {
-                    return (
-                        this.calculateDistance(pos, zone.center) <=
-                        zone.radius
-                    );
-                });
-
-                const spawnedInStation = !!spawnZone;
-
-                if (spawnedInStation) {
-                    this.announce(
-                        `${currentHeadcode} spawned at ${spawnZone.name}`
-                    );
-                } else {
-                    this.announce(
-                        `${currentHeadcode} spawned out on the line`
-                    );
-                }
-
-                this.trainStates.set(trainId, {
-                    lastHeadcode: currentHeadcode,
-                    lastHeadcodeChange: now,
-                    stationStates: [],
-                    lastSeen: now,
-                    suppressNextEntry: !spawnedInStation
-                });
-
-                if (spawnedInStation) {
-                    this.trainStates.get(trainId).stationStates.push({
-                        stationName: spawnZone.name,
-                        isInside: true,
-                        lastAnnouncement: now
-                    });
-                }
-
-                continue;
-            }
-
-            const stateData = this.trainStates.get(trainId);
-
-            stateData.lastSeen = now;
-
-            // Headcode changed
-            if (stateData.lastHeadcode !== currentHeadcode) {
-                if (
-                    now -
-                        (stateData.lastHeadcodeChange || 0) >
-                    this.DEBOUNCE_INTERVAL
-                ) {
-                    this.announce(
-                        `${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`
-                    );
-
-                    stateData.lastHeadcodeChange = now;
-                }
-
-                stateData.lastHeadcode = currentHeadcode;
-            }
-
-            // Station detection
-            for (const zone of this.stationZones) {
-                const distance = this.calculateDistance(
-                    pos,
-                    zone.center
-                );
-
-                const isInside = distance <= zone.radius;
-
-                let zoneState = stateData.stationStates.find(
-                    s => s.stationName === zone.name
-                );
-
-                if (!zoneState) {
-                    zoneState = {
-                        stationName: zone.name,
-                        isInside: false,
-                        lastAnnouncement: 0
-                    };
-
-                    stateData.stationStates.push(zoneState);
-                }
-
-                // Train entered station
-                if (!zoneState.isInside && isInside) {
-                    if (
-                        !stateData.suppressNextEntry &&
-                        now - zoneState.lastAnnouncement >
-                            this.DEBOUNCE_INTERVAL
-                    ) {
-                        this.announce(
-                            `${currentHeadcode} is entering ${zone.name}`
-                        );
-
-                        zoneState.lastAnnouncement = now;
-                    }
-
-                    if (stateData.suppressNextEntry) {
-                        stateData.suppressNextEntry = false;
-                    }
-                }
-
-                zoneState.isInside = isInside;
-            }
-        }
-
-        // Cleanup old trains
-        for (const [id, state] of this.trainStates.entries()) {
-            if (now - state.lastSeen > this.EXPIRY_TIME) {
-                this.trainStates.delete(id);
-            }
-        }
-    }
-}
-
-const detectionSystem = new TrainDetectionSystem();
-
-let ws = null;
-
-export function startAnnouncementSystem(serverId = "all") {
-    if (ws) {
-        ws.close();
-    }
-
-    // List servers
-    const availableServers =
-        detectionSystem.getAllServers();
-
-    console.log(
-        `📡 Found ${availableServers.length} active servers:`
-    );
-
-    availableServers.forEach(server => {
-        console.log(`   → ${server.short}`);
+    searchBtn.addEventListener('click', () => {
+        panel.classList.remove('hidden');
+        setTimeout(() => panel.style.opacity = '1', 10);
+        input.focus();
     });
 
-    if (serverId && serverId !== "all") {
-        console.log(`🎯 Targeting server: ${serverId}`);
-    } else {
-        console.log(`🌐 Monitoring ALL servers`);
+    function closePanel() {
+        panel.style.opacity = '0';
+        setTimeout(() => panel.classList.add('hidden'), 300);
     }
 
-    ws = new WebSocket(
-        "wss://map.dovedale.wiki/api/ws"
-    );
+    closeBtn.addEventListener('click', closePanel);
+    panel.addEventListener('click', e => { if (e.target === panel) closePanel(); });
 
-    ws.onopen = () => {
-        console.log("✅ WebSocket connected");
-    };
+    document.addEventListener('keydown', e => {
+        if (e.key === "Escape") closePanel();
+    });
 
-    ws.onmessage = event => {
-        try {
-            const data = JSON.parse(event.data);
+    input.addEventListener('input', () => renderResults(input.value.toLowerCase().trim()));
 
-            let players = [];
-
-            if (Array.isArray(data)) {
-                players = data;
-            } else if (Array.isArray(data.players)) {
-                players = data.players;
-            } else if (data.username) {
-                players = [data];
-            }
-
-            if (players.length > 0) {
-                detectionSystem.processTrains(
-                    players,
-                    serverId
-                );
-            }
-        } catch (e) {
-            console.error("❌ Parse error:", e);
-        }
-    };
-
-    ws.onclose = () => {
-        console.log(
-            "⚠️ WebSocket closed. Reconnecting in 5s..."
-        );
-
-        setTimeout(() => {
-            startAnnouncementSystem(serverId);
-        }, 5000);
-    };
-
-    ws.onerror = err => {
-        console.error("❌ WebSocket error:", err);
-    };
+    window.addEventListener('playersUpdated', (e) => {
+        allPlayers = e.detail || [];
+    });
 }
 
-window.startAnnouncementSystem =
-    startAnnouncementSystem;
+function getServerNameForPlayer(player) {
+    if (!player?.userId) return "Unknown Server";
 
-console.log("✅ System ready!");
-console.log("Usage:");
-console.log(
-    "   startAnnouncementSystem()"
-);
-console.log(
-    "   startAnnouncementSystem('2E1A96')"
-);
-console.log(
-    "   startAnnouncementSystem('full-job-id')"
-);
+    const serverData = window.state?.serverData || state?.serverData;
+    if (!serverData) return "Unknown Server";
+
+    const targetId = String(player.userId);
+
+    for (const [jobId, data] of Object.entries(serverData)) {
+        const players = data.players;
+        if (!Array.isArray(players)) continue;
+
+        const found = players.some(p => String(p.userId) === targetId);
+
+        if (found) {
+            // ALWAYS consistent format
+            return `${jobId.slice(-6)}`;
+        }
+    }
+
+    return "Unknown Server";
+}
+
+function renderResults(term) {
+    const container = document.getElementById('searchResults');
+    container.innerHTML = '';
+
+    if (!term) {
+        container.innerHTML = `<p class="text-zinc-500 text-center py-10">Start typing a username...</p>`;
+        return;
+    }
+
+    const lowerTerm = term.toLowerCase();
+
+    const filtered = allPlayers
+        .filter(p => p.username?.toLowerCase().includes(lowerTerm))
+        .sort((a, b) => {
+            const nameA = a.username.toLowerCase();
+            const nameB = b.username.toLowerCase();
+            if (nameA === lowerTerm) return -1;
+            if (nameB === lowerTerm) return 1;
+            if (nameA.startsWith(lowerTerm) && !nameB.startsWith(lowerTerm)) return -1;
+            if (!nameA.startsWith(lowerTerm) && nameB.startsWith(lowerTerm)) return 1;
+            return nameA.localeCompare(nameB);
+        });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-zinc-500 text-center py-10">No players found</p>`;
+        return;
+    }
+
+    filtered.forEach(player => {
+        const serverName = getServerNameForPlayer(player);
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-4 hover:bg-zinc-800 rounded-2xl mb-2 transition";
+        div.innerHTML = `
+            <div class="flex-1">
+                <div class="font-medium text-lg">${player.username}</div>
+                <div class="text-sm text-zinc-400">${serverName}</div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="findPlayerOnMap('${player.username}')" 
+                    class="bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-sm transition">
+                    Find on Map
+                </button>
+                <button onclick="openRobloxProfile('${player.userId}')" 
+                    class="bg-zinc-700 hover:bg-zinc-600 px-5 py-2.5 rounded-xl text-sm transition">
+                    Profile
+                </button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+window.findPlayerOnMap = function(username) {
+    const panel = document.getElementById('searchPanel');
+    panel.style.opacity = '0';
+    setTimeout(() => panel.classList.add('hidden'), 300);
+
+    window.dispatchEvent(new CustomEvent('findPlayer', { detail: username }));
+};
+
+window.openRobloxProfile = function(userId) {
+    if (userId) window.open(`https://www.roblox.com/users/${userId}/profile`, '_blank');
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPlayerSearch);
+} else {
+    initPlayerSearch();
+}
