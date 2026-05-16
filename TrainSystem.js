@@ -59,18 +59,16 @@ class TrainDetectionSystem {
                 if (spawnedInStation) {
                     this.announce(`${currentHeadcode} is entering ${spawnZone.name}`);
                 }
-                // If spawned out on the line → no announcement
 
                 const initialState = {
                     lastHeadcode: currentHeadcode,
                     stationStates: [],
                     lastSeen: now,
-                    suppressNextEntry: !spawnedInStation   // Key change: suppress first station entry if spawned on line
+                    suppressNextEntry: !spawnedInStation
                 };
 
                 this.trainStates.set(trainId, initialState);
 
-                // Mark initial station state if spawned inside
                 if (spawnedInStation) {
                     initialState.stationStates.push({
                         stationName: spawnZone.name,
@@ -84,13 +82,11 @@ class TrainDetectionSystem {
             const stateData = this.trainStates.get(trainId);
             stateData.lastSeen = now;
 
-            // Handle Headcode Change
             if (stateData.lastHeadcode !== currentHeadcode) {
                 this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
                 stateData.lastHeadcode = currentHeadcode;
             }
 
-            // Handle Station Entries
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
@@ -102,7 +98,6 @@ class TrainDetectionSystem {
                 }
 
                 if (!zoneState.isInside && isInside) {
-                    // Only announce if we are NOT suppressing the next entry
                     if (!stateData.suppressNextEntry && 
                         now - zoneState.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
                         
@@ -110,7 +105,6 @@ class TrainDetectionSystem {
                         zoneState.lastAnnouncement = now;
                     }
 
-                    // After the first entry, stop suppressing future announcements
                     if (stateData.suppressNextEntry) {
                         stateData.suppressNextEntry = false;
                     }
@@ -120,7 +114,6 @@ class TrainDetectionSystem {
             }
         }
 
-        // Cleanup
         for (const [id, state] of this.trainStates.entries()) {
             if (now - state.lastSeen > this.EXPIRY_TIME) {
                 this.trainStates.delete(id);
@@ -133,10 +126,17 @@ const detectionSystem = new TrainDetectionSystem();
 
 let ws = null;
 
-export function startAnnouncementSystem() {
+export function startAnnouncementSystem(serverId = "all") {
     if (ws) ws.close();
-    console.log("🚀 Starting Dovedale System...");
-    ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
+
+    const serverParam = serverId === "all" || !serverId ? "" : `?server=${serverId}`;
+    const wsUrl = `wss://map.dovedale.wiki/api/ws${serverParam}`;
+
+    console.log(`🚀 Starting Dovedale Announcement System... (Server: ${serverId})`);
+    console.log(`🔗 Connecting to: ${wsUrl}`);
+
+    ws = new WebSocket(wsUrl);
+
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
@@ -144,8 +144,20 @@ export function startAnnouncementSystem() {
             if (players.length > 0) detectionSystem.processTrains(players);
         } catch (e) {}
     };
-    ws.onclose = () => setTimeout(startAnnouncementSystem, 5000);
+
+    ws.onclose = () => {
+        console.log("⚠️ WebSocket closed. Reconnecting in 5s...");
+        setTimeout(() => startAnnouncementSystem(serverId), 5000);
+    };
+
+    ws.onerror = (err) => {
+        console.error("❌ WebSocket error:", err);
+    };
 }
 
 window.startAnnouncementSystem = startAnnouncementSystem;
-console.log("✅ System ready! Type startAnnouncementSystem() to start.");
+console.log("✅ System ready!");
+console.log("Usage:");
+console.log("   startAnnouncementSystem()           → All servers");
+console.log("   startAnnouncementSystem('serverid') → Specific server");
+console.log("   startAnnouncementSystem('all')      → All servers");
