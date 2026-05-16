@@ -1,6 +1,6 @@
 // =============================================
 // Dovedale Train Announcement System (v2.1)
-// Fixed: Spawn Spamming & Identity Tracking
+// Fixed: Spawn Spamming & Identity Tracking + Server Filtering
 // =============================================
 console.log("📋 TrainSystem.js loaded");
 
@@ -132,10 +132,12 @@ export function startAnnouncementSystem(serverId = "all") {
     if (ws) ws.close();
 
     let wsUrl = "wss://map.dovedale.wiki/api/ws";
-    
+
     if (serverId && serverId !== "all") {
-        wsUrl = `wss://map.dovedale.wiki/api/ws?server=${serverId}`;
-        console.log(`🚀 Starting Dovedale System for server: ${serverId}`);
+        // Clean the serverId (take last 6 characters like in your example)
+        const cleanId = String(serverId).trim().slice(-6);
+        wsUrl = `wss://map.dovedale.wiki/api/ws?server=${cleanId}`;
+        console.log(`🚀 Starting Dovedale System for server: ${cleanId}`);
     } else {
         console.log(`🚀 Starting Dovedale System for ALL servers`);
     }
@@ -159,13 +161,12 @@ export function startAnnouncementSystem(serverId = "all") {
         setTimeout(() => startAnnouncementSystem(serverId), 5000);
     };
 
-    ws.onerror = (err) => {
-        console.error("❌ WebSocket error:", err);
-    };
+    ws.onerror = (err) => console.error("❌ WebSocket error:", err);
 }
 
 window.startAnnouncementSystem = startAnnouncementSystem;
 console.log("✅ System ready!");
 console.log("Usage:");
-console.log("   startAnnouncementSystem()           → All servers");
-console.log("   startAnnouncementSystem('serverid') → Specific server only");
+console.log("   startAnnouncementSystem()                    → All servers");
+console.log("   startAnnouncementSystem('abc123')             → Specific server (last 6 chars)");
+console.log("   startAnnouncementSystem('job-abc123xyz')     → Also works, takes last 6");
