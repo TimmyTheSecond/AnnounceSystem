@@ -1,6 +1,6 @@
 // =============================================
 // Dovedale Train Announcement System (v2.1)
-// Server Filtering using state.serverData
+// Updated: Better WebSocket Data Handling + Server Filtering
 // =============================================
 console.log("📋 TrainSystem.js loaded");
 
@@ -43,46 +43,39 @@ class TrainDetectionSystem {
         } catch (e) {}
     }
 
-    getServerNameForPlayer(player) {
-        if (!player?.userId) return null;
-        const serverData = window.state?.serverData || window?.state?.serverData;
-        if (!serverData) return null;
+    // Extract 6-char server ID from jobId
+    getServerId(jobId) {
+        if (!jobId) return null;
+        return String(jobId).slice(-6);
+    }
 
-        const targetId = String(player.userId);
-        for (const [jobId, data] of Object.entries(serverData)) {
-            if (!Array.isArray(data.players)) continue;
-            if (data.players.some(p => String(p.userId) === targetId)) {
-                return jobId.slice(-6);
+    processTrains(data, targetServerId = null) {
+        const now = Date.now();
+        
+        // Handle both possible formats
+        let players = [];
+        let jobId = null;
+
+        if (data.jobId && Array.isArray(data.players)) {
+            players = data.players;
+            jobId = data.jobId;
+        } else if (Array.isArray(data)) {
+            players = data;
+        } else if (data.players) {
+            players = data.players;
+        }
+
+        // Server filtering
+        if (targetServerId && targetServerId !== "all" && jobId) {
+            const target = String(targetServerId).trim().toUpperCase();
+            const currentServer = this.getServerId(jobId).toUpperCase();
+            
+            if (currentServer !== target) {
+                return; // Skip this message if it's not the target server
             }
         }
-        return null;
-    }
 
-    // Get all active servers
-    getAllServers() {
-        const serverData = window.state?.serverData || window?.state?.serverData;
-        if (!serverData) return [];
-        
-        return Object.keys(serverData).map(jobId => ({
-            full: jobId,
-            short: jobId.slice(-6)
-        }));
-    }
-
-    processTrains(players, targetServerId = null) {
-        const now = Date.now();
-        let filteredPlayers = players;
-
-        if (targetServerId && targetServerId !== "all") {
-            const target = String(targetServerId).trim().toUpperCase();
-            
-            filteredPlayers = players.filter(p => {
-                const serverTag = this.getServerNameForPlayer(p);
-                return serverTag && serverTag.toUpperCase() === target;
-            });
-        }
-
-        const activeTrains = filteredPlayers.filter(p => p.trainData?.headcode);
+        const activeTrains = players.filter(p => p.trainData?.headcode);
 
         for (const train of activeTrains) {
             const trainId = train.username || train.id;
@@ -171,11 +164,6 @@ let ws = null;
 export function startAnnouncementSystem(serverId = "all") {
     if (ws) ws.close();
 
-    // List all available servers
-    const availableServers = detectionSystem.getAllServers();
-    console.log(`📡 Found ${availableServers.length} active servers:`);
-    availableServers.forEach(s => console.log(`   → ${s.short}`));
-
     if (serverId && serverId !== "all") {
         console.log(`🎯 Targeting server: ${serverId}`);
     } else {
@@ -187,11 +175,7 @@ export function startAnnouncementSystem(serverId = "all") {
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-            let players = Array.isArray(data) ? data : (data.players || (data.username ? [data] : []));
-            
-            if (players.length > 0) {
-                detectionSystem.processTrains(players, serverId);
-            }
+            detectionSystem.processTrains(data, serverId);
         } catch (e) {
             console.error("Parse error:", e);
         }
@@ -209,4 +193,4 @@ window.startAnnouncementSystem = startAnnouncementSystem;
 console.log("✅ System ready!");
 console.log("Usage:");
 console.log("   startAnnouncementSystem()           → All servers");
-console.log("   startAnnouncementSystem('2e1a96')   → Only that server");
+console.log("   startAnnouncementSystem('2e1a96')   → Only server ending in 2e1a96");
