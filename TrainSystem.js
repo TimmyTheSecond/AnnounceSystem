@@ -1,8 +1,7 @@
 // =============================================
-// Dovedale Train Announcement System (v2.3)
-// Fixed Server Filtering
+// Dovedale Train Announcement System (v2.1)
+// Server Filtering using state.serverData
 // =============================================
-
 console.log("📋 TrainSystem.js loaded");
 
 const DEFAULT_STATIONS = [
@@ -23,7 +22,6 @@ class TrainDetectionSystem {
     constructor() {
         this.stationZones = DEFAULT_STATIONS;
         this.trainStates = new Map();
-
         this.DEBOUNCE_INTERVAL = 5 * 60 * 1000;
         this.EXPIRY_TIME = 10000;
     }
@@ -31,71 +29,40 @@ class TrainDetectionSystem {
     calculateDistance(p1, p2) {
         const dx = p1.x - p2.x;
         const dy = p1.y - p2.y;
-
         return Math.sqrt(dx * dx + dy * dy);
     }
 
     async announce(message) {
         console.log(`📢 ${message}`);
-
         try {
             await fetch("http://127.0.0.1:3000", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    text: message
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: message })
             });
-        } catch (e) {
-            console.warn("⚠️ Failed to send announcement");
-        }
+        } catch (e) {}
     }
 
-    // Build lookup map
-    getPlayerServerMap() {
-        const serverData = window.state?.serverData;
+    getServerNameForPlayer(player) {
+        if (!player?.userId) return null;
+        const serverData = window.state?.serverData || window?.state?.serverData;
+        if (!serverData) return null;
 
-        if (!serverData) {
-            return new Map();
-        }
-
-        const map = new Map();
-
+        const targetId = String(player.userId);
         for (const [jobId, data] of Object.entries(serverData)) {
             if (!Array.isArray(data.players)) continue;
-
-            for (const player of data.players) {
-                if (!player?.userId) continue;
-
-                map.set(String(player.userId), {
-                    full: jobId,
-                    short: jobId.slice(-6)
-                });
+            if (data.players.some(p => String(p.userId) === targetId)) {
+                return jobId.slice(-6);
             }
         }
-
-        return map;
+        return null;
     }
 
-    getServerNameForPlayer(player, playerServerMap) {
-        if (!player?.userId) {
-            return null;
-        }
-
-        return playerServerMap.get(String(player.userId)) || null;
-    }
-
-    // Get active servers
+    // Get all active servers
     getAllServers() {
-        const serverData = window.state?.serverData;
-
-        if (!serverData) {
-            console.warn("⚠️ state.serverData not loaded yet");
-            return [];
-        }
-
+        const serverData = window.state?.serverData || window?.state?.serverData;
+        if (!serverData) return [];
+        
         return Object.keys(serverData).map(jobId => ({
             full: jobId,
             short: jobId.slice(-6)
@@ -104,68 +71,32 @@ class TrainDetectionSystem {
 
     processTrains(players, targetServerId = null) {
         const now = Date.now();
-
         let filteredPlayers = players;
 
-        const playerServerMap = this.getPlayerServerMap();
-
-        // Filter by server
         if (targetServerId && targetServerId !== "all") {
-            const target = String(targetServerId).trim();
-
-            filteredPlayers = players.filter(player => {
-                const serverInfo = this.getServerNameForPlayer(
-                    player,
-                    playerServerMap
-                );
-
-                if (!serverInfo) {
-                    return false;
-                }
-
-                return (
-                    serverInfo.short === target ||
-                    serverInfo.full === target
-                );
+            const target = String(targetServerId).trim().toUpperCase();
+            
+            filteredPlayers = players.filter(p => {
+                const serverTag = this.getServerNameForPlayer(p);
+                return serverTag && serverTag.toUpperCase() === target;
             });
-
-            console.log(
-                `🎯 Server filter ${target}: ${filteredPlayers.length}/${players.length} players matched`
-            );
         }
 
-        const activeTrains = filteredPlayers.filter(player => {
-            return player?.trainData?.headcode;
-        });
+        const activeTrains = filteredPlayers.filter(p => p.trainData?.headcode);
 
         for (const train of activeTrains) {
             const trainId = train.username || train.id;
-
             const currentHeadcode = train.trainData.headcode;
-
             const pos = train.position;
 
-            if (!pos) continue;
-
-            // New train
             if (!this.trainStates.has(trainId)) {
-                const spawnZone = this.stationZones.find(zone => {
-                    return (
-                        this.calculateDistance(pos, zone.center) <=
-                        zone.radius
-                    );
-                });
-
+                const spawnZone = this.stationZones.find(z => this.calculateDistance(pos, z.center) <= z.radius);
                 const spawnedInStation = !!spawnZone;
 
                 if (spawnedInStation) {
-                    this.announce(
-                        `${currentHeadcode} spawned at ${spawnZone.name}`
-                    );
+                    this.announce(`${currentHeadcode} spawned at ${spawnZone.name}`);
                 } else {
-                    this.announce(
-                        `${currentHeadcode} spawned out on the line`
-                    );
+                    this.announce(`${currentHeadcode} spawned out on the line`);
                 }
 
                 this.trainStates.set(trainId, {
@@ -183,64 +114,35 @@ class TrainDetectionSystem {
                         lastAnnouncement: now
                     });
                 }
-
                 continue;
             }
 
             const stateData = this.trainStates.get(trainId);
-
             stateData.lastSeen = now;
 
-            // Headcode changed
             if (stateData.lastHeadcode !== currentHeadcode) {
-                if (
-                    now - (stateData.lastHeadcodeChange || 0) >
-                    this.DEBOUNCE_INTERVAL
-                ) {
-                    this.announce(
-                        `${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`
-                    );
-
+                if (now - (stateData.lastHeadcodeChange || 0) > this.DEBOUNCE_INTERVAL) {
+                    this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
                     stateData.lastHeadcodeChange = now;
                 }
-
                 stateData.lastHeadcode = currentHeadcode;
             }
 
-            // Station detection
             for (const zone of this.stationZones) {
-                const distance = this.calculateDistance(
-                    pos,
-                    zone.center
-                );
-
+                const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
-
-                let zoneState = stateData.stationStates.find(
-                    s => s.stationName === zone.name
-                );
+                let zoneState = stateData.stationStates.find(s => s.stationName === zone.name);
 
                 if (!zoneState) {
-                    zoneState = {
-                        stationName: zone.name,
-                        isInside: false,
-                        lastAnnouncement: 0
-                    };
-
+                    zoneState = { stationName: zone.name, isInside: false, lastAnnouncement: 0 };
                     stateData.stationStates.push(zoneState);
                 }
 
-                // Entered station
                 if (!zoneState.isInside && isInside) {
-                    if (
-                        !stateData.suppressNextEntry &&
-                        now - zoneState.lastAnnouncement >
-                        this.DEBOUNCE_INTERVAL
-                    ) {
-                        this.announce(
-                            `${currentHeadcode} is entering ${zone.name}`
-                        );
-
+                    if (!stateData.suppressNextEntry && 
+                        now - zoneState.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
+                        
+                        this.announce(`${currentHeadcode} is entering ${zone.name}`);
                         zoneState.lastAnnouncement = now;
                     }
 
@@ -253,7 +155,7 @@ class TrainDetectionSystem {
             }
         }
 
-        // Cleanup old trains
+        // Cleanup
         for (const [id, state] of this.trainStates.entries()) {
             if (now - state.lastSeen > this.EXPIRY_TIME) {
                 this.trainStates.delete(id);
@@ -267,23 +169,12 @@ const detectionSystem = new TrainDetectionSystem();
 let ws = null;
 
 export function startAnnouncementSystem(serverId = "all") {
-    if (ws) {
-        ws.close();
-    }
+    if (ws) ws.close();
 
-    // Delay server listing slightly so state.serverData can load
-    setTimeout(() => {
-        const availableServers =
-            detectionSystem.getAllServers();
-
-        console.log(
-            `📡 Found ${availableServers.length} active servers:`
-        );
-
-        availableServers.forEach(server => {
-            console.log(`   → ${server.short}`);
-        });
-    }, 2000);
+    // List all available servers
+    const availableServers = detectionSystem.getAllServers();
+    console.log(`📡 Found ${availableServers.length} active servers:`);
+    availableServers.forEach(s => console.log(`   → ${s.short}`));
 
     if (serverId && serverId !== "all") {
         console.log(`🎯 Targeting server: ${serverId}`);
@@ -291,65 +182,31 @@ export function startAnnouncementSystem(serverId = "all") {
         console.log(`🌐 Monitoring ALL servers`);
     }
 
-    ws = new WebSocket(
-        "wss://map.dovedale.wiki/api/ws"
-    );
+    ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
 
-    ws.onopen = () => {
-        console.log("✅ WebSocket connected");
-    };
-
-    ws.onmessage = event => {
+    ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-
-            let players = [];
-
-            if (Array.isArray(data)) {
-                players = data;
-            } else if (Array.isArray(data.players)) {
-                players = data.players;
-            } else if (data.username) {
-                players = [data];
-            }
-
+            let players = Array.isArray(data) ? data : (data.players || (data.username ? [data] : []));
+            
             if (players.length > 0) {
-                detectionSystem.processTrains(
-                    players,
-                    serverId
-                );
+                detectionSystem.processTrains(players, serverId);
             }
         } catch (e) {
-            console.error("❌ Parse error:", e);
+            console.error("Parse error:", e);
         }
     };
 
     ws.onclose = () => {
-        console.log(
-            "⚠️ WebSocket closed. Reconnecting in 5s..."
-        );
-
-        setTimeout(() => {
-            startAnnouncementSystem(serverId);
-        }, 5000);
+        console.log("⚠️ WebSocket closed. Reconnecting in 5s...");
+        setTimeout(() => startAnnouncementSystem(serverId), 5000);
     };
 
-    ws.onerror = err => {
-        console.error("❌ WebSocket error:", err);
-    };
+    ws.onerror = (err) => console.error("❌ WebSocket error:", err);
 }
 
-window.startAnnouncementSystem =
-    startAnnouncementSystem;
-
+window.startAnnouncementSystem = startAnnouncementSystem;
 console.log("✅ System ready!");
 console.log("Usage:");
-console.log(
-    "   startAnnouncementSystem()"
-);
-console.log(
-    "   startAnnouncementSystem('2e1a96')"
-);
-console.log(
-    "   startAnnouncementSystem('full-job-id')"
-);
+console.log("   startAnnouncementSystem()           → All servers");
+console.log("   startAnnouncementSystem('2e1a96')   → Only that server");
