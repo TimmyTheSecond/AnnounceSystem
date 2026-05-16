@@ -2,7 +2,6 @@
 // Dovedale Train Announcement System (v2.1)
 // Fixed: Spawn Spamming & Identity Tracking
 // =============================================
-
 console.log("📋 TrainSystem.js loaded");
 
 const DEFAULT_STATIONS = [
@@ -24,7 +23,7 @@ class TrainDetectionSystem {
         this.stationZones = DEFAULT_STATIONS;
         this.trainStates = new Map();
         this.DEBOUNCE_INTERVAL = 5 * 60 * 1000;
-        this.EXPIRY_TIME = 10000; // Time (ms) before we consider a player "gone"
+        this.EXPIRY_TIME = 10000;
     }
 
     calculateDistance(p1, p2) {
@@ -49,29 +48,41 @@ class TrainDetectionSystem {
         const activeTrains = players.filter(p => p.trainData?.headcode);
 
         for (const train of activeTrains) {
-            // Priority: use username, fallback to id
-            const trainId = train.username || train.id; 
+            const trainId = train.username || train.id;
             const currentHeadcode = train.trainData.headcode;
             const pos = train.position;
 
-            // Check if we already know this player
             if (!this.trainStates.has(trainId)) {
-                // Determine spawn location
                 const spawnZone = this.stationZones.find(z => this.calculateDistance(pos, z.center) <= z.radius);
-                const locationText = spawnZone ? `at ${spawnZone.name}` : "out on the line";
-                
-                this.announce(`${currentHeadcode} spawned ${locationText}`);
-                
-                this.trainStates.set(trainId, {
+                const spawnedInStation = !!spawnZone;
+
+                if (spawnedInStation) {
+                    this.announce(`${currentHeadcode} is entering ${spawnZone.name}`);
+                }
+                // If spawned out on the line → no announcement
+
+                const initialState = {
                     lastHeadcode: currentHeadcode,
                     stationStates: [],
-                    lastSeen: now
-                });
+                    lastSeen: now,
+                    suppressNextEntry: !spawnedInStation   // Key change: suppress first station entry if spawned on line
+                };
+
+                this.trainStates.set(trainId, initialState);
+
+                // Mark initial station state if spawned inside
+                if (spawnedInStation) {
+                    initialState.stationStates.push({
+                        stationName: spawnZone.name,
+                        isInside: true,
+                        lastAnnouncement: now
+                    });
+                }
                 continue;
             }
 
             const stateData = this.trainStates.get(trainId);
-            stateData.lastSeen = now; // Update timestamp so they don't expire
+            stateData.lastSeen = now;
 
             // Handle Headcode Change
             if (stateData.lastHeadcode !== currentHeadcode) {
@@ -83,24 +94,33 @@ class TrainDetectionSystem {
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
-
                 let zoneState = stateData.stationStates.find(s => s.stationName === zone.name);
+
                 if (!zoneState) {
                     zoneState = { stationName: zone.name, isInside: false, lastAnnouncement: 0 };
                     stateData.stationStates.push(zoneState);
                 }
 
                 if (!zoneState.isInside && isInside) {
-                    if (now - zoneState.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
+                    // Only announce if we are NOT suppressing the next entry
+                    if (!stateData.suppressNextEntry && 
+                        now - zoneState.lastAnnouncement > this.DEBOUNCE_INTERVAL) {
+                        
                         this.announce(`${currentHeadcode} is entering ${zone.name}`);
                         zoneState.lastAnnouncement = now;
                     }
+
+                    // After the first entry, stop suppressing future announcements
+                    if (stateData.suppressNextEntry) {
+                        stateData.suppressNextEntry = false;
+                    }
                 }
+
                 zoneState.isInside = isInside;
             }
         }
 
-        // --- CLEANUP (Only remove if not seen for > 10 seconds) ---
+        // Cleanup
         for (const [id, state] of this.trainStates.entries()) {
             if (now - state.lastSeen > this.EXPIRY_TIME) {
                 this.trainStates.delete(id);
@@ -110,14 +130,13 @@ class TrainDetectionSystem {
 }
 
 const detectionSystem = new TrainDetectionSystem();
+
 let ws = null;
 
 export function startAnnouncementSystem() {
     if (ws) ws.close();
-
     console.log("🚀 Starting Dovedale System...");
     ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
-
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
@@ -125,7 +144,6 @@ export function startAnnouncementSystem() {
             if (players.length > 0) detectionSystem.processTrains(players);
         } catch (e) {}
     };
-
     ws.onclose = () => setTimeout(startAnnouncementSystem, 5000);
 }
 
