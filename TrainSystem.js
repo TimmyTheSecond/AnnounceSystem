@@ -1,6 +1,6 @@
 // =============================================
 // Dovedale Train Announcement System (v2.1)
-// Fixed: Spawn Spamming & Identity Tracking + Server Filtering
+// Fixed: Server Filtering using state.serverData
 // =============================================
 console.log("📋 TrainSystem.js loaded");
 
@@ -43,9 +43,21 @@ class TrainDetectionSystem {
         } catch (e) {}
     }
 
-    processTrains(players) {
+    processTrains(players, targetServerId = null) {
         const now = Date.now();
-        const activeTrains = players.filter(p => p.trainData?.headcode);
+        let filteredPlayers = players;
+
+        // If targeting a specific server, filter players using the same logic as your playerSearch.js
+        if (targetServerId) {
+            const cleanTarget = String(targetServerId).trim().toLowerCase();
+            filteredPlayers = players.filter(p => {
+                if (!p.userId) return false;
+                const serverName = this.getServerNameForPlayer(p);
+                return String(serverName).toLowerCase() === cleanTarget;
+            });
+        }
+
+        const activeTrains = filteredPlayers.filter(p => p.trainData?.headcode);
 
         for (const train of activeTrains) {
             const trainId = train.username || train.id;
@@ -62,17 +74,16 @@ class TrainDetectionSystem {
                     this.announce(`${currentHeadcode} spawned out on the line`);
                 }
 
-                const initialState = {
+                this.trainStates.set(trainId, {
                     lastHeadcode: currentHeadcode,
+                    lastHeadcodeChange: now,
                     stationStates: [],
                     lastSeen: now,
                     suppressNextEntry: !spawnedInStation
-                };
-
-                this.trainStates.set(trainId, initialState);
+                });
 
                 if (spawnedInStation) {
-                    initialState.stationStates.push({
+                    this.trainStates.get(trainId).stationStates.push({
                         stationName: spawnZone.name,
                         isInside: true,
                         lastAnnouncement: now
@@ -84,11 +95,16 @@ class TrainDetectionSystem {
             const stateData = this.trainStates.get(trainId);
             stateData.lastSeen = now;
 
+            // Headcode Change (5 min debounce)
             if (stateData.lastHeadcode !== currentHeadcode) {
-                this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
+                if (now - (stateData.lastHeadcodeChange || 0) > this.DEBOUNCE_INTERVAL) {
+                    this.announce(`${stateData.lastHeadcode} changed its headcode to ${currentHeadcode}`);
+                    stateData.lastHeadcodeChange = now;
+                }
                 stateData.lastHeadcode = currentHeadcode;
             }
 
+            // Station Entries
             for (const zone of this.stationZones) {
                 const distance = this.calculateDistance(pos, zone.center);
                 const isInside = distance <= zone.radius;
@@ -116,11 +132,29 @@ class TrainDetectionSystem {
             }
         }
 
+        // Cleanup
         for (const [id, state] of this.trainStates.entries()) {
             if (now - state.lastSeen > this.EXPIRY_TIME) {
                 this.trainStates.delete(id);
             }
         }
+    }
+
+    // Same logic as your playerSearch.js
+    getServerNameForPlayer(player) {
+        if (!player?.userId) return null;
+        const serverData = window.state?.serverData || window?.state?.serverData;
+        if (!serverData) return null;
+
+        const targetId = String(player.userId);
+        for (const [jobId, data] of Object.entries(serverData)) {
+            const players = data.players;
+            if (!Array.isArray(players)) continue;
+            if (players.some(p => String(p.userId) === targetId)) {
+                return `${jobId.slice(-6)}`;
+            }
+        }
+        return null;
     }
 }
 
@@ -131,26 +165,24 @@ let ws = null;
 export function startAnnouncementSystem(serverId = "all") {
     if (ws) ws.close();
 
-    let wsUrl = "wss://map.dovedale.wiki/api/ws";
+    console.log(`🚀 Starting Dovedale Announcement System...`);
 
     if (serverId && serverId !== "all") {
-        // Clean the serverId (take last 6 characters like in your example)
-        const cleanId = String(serverId).trim().slice(-6);
-        wsUrl = `wss://map.dovedale.wiki/api/ws?server=${cleanId}`;
-        console.log(`🚀 Starting Dovedale System for server: ${cleanId}`);
+        console.log(`🎯 Targeting server: ${serverId}`);
     } else {
-        console.log(`🚀 Starting Dovedale System for ALL servers`);
+        console.log(`🌐 Monitoring ALL servers`);
     }
 
-    console.log(`🔗 Connecting to: ${wsUrl}`);
-
-    ws = new WebSocket(wsUrl);
+    ws = new WebSocket("wss://map.dovedale.wiki/api/ws");
 
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
             let players = Array.isArray(data) ? data : (data.players || (data.username ? [data] : []));
-            if (players.length > 0) detectionSystem.processTrains(players);
+            
+            if (players.length > 0) {
+                detectionSystem.processTrains(players, serverId);
+            }
         } catch (e) {
             console.error("Parse error:", e);
         }
@@ -167,6 +199,5 @@ export function startAnnouncementSystem(serverId = "all") {
 window.startAnnouncementSystem = startAnnouncementSystem;
 console.log("✅ System ready!");
 console.log("Usage:");
-console.log("   startAnnouncementSystem()                    → All servers");
-console.log("   startAnnouncementSystem('abc123')             → Specific server (last 6 chars)");
-console.log("   startAnnouncementSystem('job-abc123xyz')     → Also works, takes last 6");
+console.log("   startAnnouncementSystem()           → All servers");
+console.log("   startAnnouncementSystem('2e1a96')   → Only server 2e1a96");
